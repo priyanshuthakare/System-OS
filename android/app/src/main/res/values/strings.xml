@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Stability OS</string>
+    <string name="title_activity_main">Stability OS</string>
+    <string name="package_name">com.projectmahem.stabilityos</string>
+    <string name="custom_url_scheme">com.projectmahem.stabilityos</string>
+</resources>
