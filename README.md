@@ -488,8 +488,8 @@ Copyright © 2026 Priyanshu Thakare
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/stability-os/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/stability-os/discussions)
+- **Issues**: [GitHub Issues](https://github.com/priyanshuthakare/stability-os/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/priyanshuthakare/stability-os/discussions)
 
 ---
 
