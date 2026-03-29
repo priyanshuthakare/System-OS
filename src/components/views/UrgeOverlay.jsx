@@ -1,24 +1,38 @@
 import { useEffect, useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { Check } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../store/useAuthStore'
+import { db } from '../../lib/db'
 
-const STEPS = ['Stand up now', '40 pushups', 'Cold water', '3-min breathe', 'Redirect task']
+const DEFAULT_STEPS = ['Stand up now', 'Cold water', '3-min breathe', 'Write what triggered this', 'Redirect to scheduled task']
 
 /**
- * @intent Screen 3: Urge Protocol Fullscreen Override — interactive, checkable steps
+ * @intent Screen 3: Urge Protocol Fullscreen Override — sequential steps, timer-gated
  * @param None
  */
 export default function UrgeOverlay() {
     const setUrgeActive = useAppStore(state => state.setUrgeActive)
     const user = useAuthStore(s => s.user)
 
-    const [timeLeft, setTimeLeft] = useState(12 * 60)
+    // Dynamic preferences from Dexie
+    const stepsPref = useLiveQuery(() => db.user_preferences.get('urge_steps'))
+    const timerPref = useLiveQuery(() => db.user_preferences.get('urge_timer_minutes'))
+
+    const STEPS = stepsPref ? JSON.parse(stepsPref.value) : DEFAULT_STEPS
+    const timerMinutes = timerPref ? parseInt(timerPref.value, 10) : 10
+
+    const [timeLeft, setTimeLeft] = useState(timerMinutes * 60)
     const [isRunning, setIsRunning] = useState(false)
     const [logging, setLogging] = useState(false)
     const [completed, setCompleted] = useState({})
+
+    // Reset timer if preference changes
+    useEffect(() => {
+        if (!isRunning) setTimeLeft(timerMinutes * 60)
+    }, [timerMinutes, isRunning])
 
     const allDone = Object.keys(completed).length === STEPS.length
 
@@ -31,16 +45,17 @@ export default function UrgeOverlay() {
     const mins = String(Math.floor(timeLeft / 60)).padStart(2, '0')
     const secs = String(timeLeft % 60).padStart(2, '0')
 
+    /**
+     * @intent Enforce sequential step completion — only the next uncompleted step can be marked done
+     */
     const toggleStep = (idx) => {
-        setCompleted(prev => {
-            const next = { ...prev }
-            if (next[idx]) {
-                delete next[idx]
-            } else {
-                next[idx] = true
-            }
-            return next
-        })
+        // Can only complete steps sequentially — no skipping, no un-checking
+        if (!isRunning) return
+        const nextIdx = Object.keys(completed).length
+        if (idx !== nextIdx) return
+        if (completed[idx]) return
+
+        setCompleted(prev => ({ ...prev, [idx]: true }))
     }
 
     const handleStart = async () => {
@@ -107,35 +122,41 @@ export default function UrgeOverlay() {
                 <div className="flex flex-col gap-0.5 mb-6">
                     {STEPS.map((step, i) => {
                         const isDone = !!completed[i]
-                        const isCurrent = !isDone && Object.keys(completed).length === i
+                        const nextIdx = Object.keys(completed).length
+                        const isCurrent = !isDone && i === nextIdx
+                        const isLocked = !isDone && i > nextIdx
+                        const isClickable = isRunning && isCurrent
+
                         return (
                             <button
                                 key={i}
                                 onClick={() => toggleStep(i)}
+                                disabled={!isClickable}
                                 className={cn(
                                     "border p-4 flex items-center gap-4 transition-all text-left",
                                     isDone
                                         ? "bg-green/10 border-green/30 opacity-60"
-                                        : isCurrent
+                                        : isCurrent && isRunning
                                             ? "bg-red-dim border-red"
-                                            : "bg-surface border-border"
+                                            : "bg-surface border-border",
+                                    !isClickable && !isDone && "opacity-40"
                                 )}
                             >
                                 <div className={cn(
                                     "font-mono font-bold text-[22px] w-7 shrink-0",
-                                    isDone ? "text-green" : isCurrent ? "text-red" : "text-text3"
+                                    isDone ? "text-green" : isCurrent && isRunning ? "text-red" : "text-text3"
                                 )}>
                                     0{i + 1}
                                 </div>
                                 <div className={cn(
                                     "flex-1 font-condensed font-bold text-[16px] uppercase tracking-[1px]",
-                                    isDone ? "text-green line-through" : isCurrent ? "text-white" : "text-text2"
+                                    isDone ? "text-green line-through" : isCurrent && isRunning ? "text-white" : "text-text2"
                                 )}>
                                     {step}
                                 </div>
                                 <div className={cn(
                                     "w-[18px] h-[18px] border-[1.5px] shrink-0 flex items-center justify-center transition-colors",
-                                    isDone ? "border-green bg-green" : "border-border2"
+                                    isDone ? "border-green bg-green" : isLocked ? "border-border2 opacity-30" : "border-border2"
                                 )}>
                                     {isDone && <Check size={12} className="text-black" />}
                                 </div>

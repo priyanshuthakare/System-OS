@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { useSettingsLogic } from '../../hooks/useSettingsLogic'
+import { useTierGuard } from '../../hooks/useTierGuard'
+import ProUpgradeModal from '../ui/ProUpgradeModal'
 import { cn } from '../../lib/utils'
 
 const CATEGORIES = [
@@ -15,6 +17,8 @@ const CATEGORIES = [
  */
 export default function SettingsView() {
     const { timeBlocks, templates, addBlock, deleteBlock, addTemplate, deleteTemplate } = useSettingsLogic()
+    const { canAddState, canAddChecklist, isPro } = useTierGuard()
+    const [showUpgrade, setShowUpgrade] = useState(false)
 
     if (!timeBlocks) return <div className="p-6 text-text3 font-mono text-[10px]">Loading Settings...</div>
 
@@ -30,28 +34,46 @@ export default function SettingsView() {
             <div className="space-y-6">
                 <div className="relative flex items-center justify-between border-b border-border pb-2">
                     <h2 className="font-mono text-[10px] tracking-[2px] uppercase text-text2">Operating States</h2>
-                    <AddBlockButton onAdd={addBlock} />
+                    <AddBlockButton onAdd={(data) => {
+                        if (!canAddState()) {
+                            setShowUpgrade(true)
+                            return
+                        }
+                        addBlock(data)
+                    }} />
                 </div>
 
                 <div className="flex flex-col gap-3">
-                    {timeBlocks.map(block => (
-                        <BlockItem 
-                            key={block.id} 
-                            block={block} 
-                            templates={templates?.filter(t => t.block_id === block.id) || []}
-                            onDelete={deleteBlock}
-                            onAddTemplate={addTemplate}
-                            onDeleteTemplate={deleteTemplate}
-                        />
-                    ))}
+                    {timeBlocks.map(block => {
+                        const blockTemplates = templates?.filter(t => t.block_id === block.id) || []
+                        return (
+                            <BlockItem 
+                                key={block.id} 
+                                block={block} 
+                                templates={blockTemplates}
+                                onDelete={deleteBlock}
+                                onAddTemplate={(data) => {
+                                    if (!canAddChecklist(blockTemplates.length)) {
+                                        setShowUpgrade(true)
+                                        return
+                                    }
+                                    addTemplate(data)
+                                }}
+                                onDeleteTemplate={deleteTemplate}
+                            />
+                        )
+                    })}
                 </div>
             </div>
+
+            {showUpgrade && <ProUpgradeModal onClose={() => setShowUpgrade(false)} />}
         </div>
     )
 }
 
 function BlockItem({ block, templates, onDelete, onAddTemplate, onDeleteTemplate }) {
     const [expanded, setExpanded] = useState(false)
+    const [confirmDelete, setConfirmDelete] = useState(false)
 
     // Group templates by category
     const physical = templates.filter(t => t.category === 'physical')
@@ -77,14 +99,30 @@ function BlockItem({ block, templates, onDelete, onAddTemplate, onDeleteTemplate
                     </div>
                 </div>
                 
-                <button 
-                    onClick={() => {
-                        if (confirm('Delete this state?')) onDelete(block.id)
-                    }}
-                    className="p-2 text-text3 hover:text-red transition-colors"
-                >
-                    <Trash2 size={16} />
-                </button>
+                {confirmDelete ? (
+                    <div className="flex items-center gap-2">
+                        <span className="font-mono text-[9px] text-red tracking-[1px]">CONFIRM DELETE?</span>
+                        <button
+                            onClick={() => { onDelete(block.id); setConfirmDelete(false) }}
+                            className="px-2 py-1 border border-red text-red font-mono text-[9px] hover:bg-red/10 transition-colors"
+                        >
+                            YES
+                        </button>
+                        <button
+                            onClick={() => setConfirmDelete(false)}
+                            className="px-2 py-1 border border-border text-text3 font-mono text-[9px] hover:text-white transition-colors"
+                        >
+                            NO
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => setConfirmDelete(true)}
+                        className="p-2 text-text3 hover:text-red transition-colors"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                )}
             </div>
 
             {expanded && (
@@ -188,7 +226,7 @@ function AddBlockButton({ onAdd }) {
     }
 
     return (
-        <div className="absolute right-0 top-8 z-20 w-72 border border-green/30 bg-black p-4 flex flex-col gap-3 shadow-lg shadow-black/50">
+        <div className="absolute right-0 top-8 z-20 w-72 max-h-[70vh] overflow-y-auto border border-green/30 bg-black p-4 flex flex-col gap-3 shadow-lg shadow-black/50">
             <div className="font-mono text-[9px] tracking-[2px] text-green uppercase">New Operating State</div>
 
             <input

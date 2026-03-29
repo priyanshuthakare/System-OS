@@ -72,8 +72,8 @@ export default function TimeEngine() {
                 isSleepMode = !!block.is_sleep
                 uiColor = block.ui_color || 'bg-surface'
                 
-                // Hardcoded reward window for now as per specific app logic
-                if (block.name.toLowerCase().includes('reward')) {
+                // Use dedicated is_reward flag, or fall back to checking unlock_reward field
+                if (block.is_reward || (block.unlock_reward && block.unlock_reward.trim() !== '')) {
                     isRewardWindowOpen = true
                 }
                 break

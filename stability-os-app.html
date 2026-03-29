@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STABILITY OS v1 — App Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Barlow+Condensed:wght@300;400;500;600;700;800;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black: #0A0A0A;
+    --dark: #111111;
+    --surface: #181818;
+    --surface2: #1F1F1F;
+    --border: #2A2A2A;
+    --border2: #333333;
+    --text: #E8E4DC;
+    --text2: #8A8680;
+    --text3: #555250;
+    --red: #D94040;
+    --red-dim: #5C1A1A;
+    --amber: #C87D2F;
+    --amber-dim: #3D2610;
+    --green: #4A8C5C;
+    --green-dim: #1A3324;
+    --white: #F0EDE8;
+    --mono: 'Space Mono', monospace;
+    --cond: 'Barlow Condensed', sans-serif;
+    --body: 'Barlow', sans-serif;
+  }
+
+  body {
+    background: #0D0D0D;
+    font-family: var(--body);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 60px 40px;
+  }
+
+  /* DESIGN CANVAS */
+  .canvas-header {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    margin-bottom: 60px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .canvas-title {
+    font-family: var(--cond);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .canvas-name {
+    font-family: var(--cond);
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--white);
+  }
+  .version-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--red);
+    padding: 3px 8px;
+    border: 1px solid var(--red);
+    letter-spacing: 1px;
+    margin-left: auto;
+  }
+
+  /* SCREEN LAYOUT */
+  .screens-row {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+    margin-bottom: 60px;
+    flex-wrap: wrap;
+  }
+  .screen-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+  .screen-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  /* PHONE FRAME */
+  .phone {
+    width: 375px;
+    min-height: 812px;
+    background: var(--black);
+    border-radius: 44px;
+    border: 2px solid var(--border2);
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 0 1px #000, 0 40px 80px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+    display: flex;
+    flex-direction: column;
+  }
+  .phone-notch {
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--black);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .notch-bar {
+    width: 120px;
+    height: 30px;
+    background: #000;
+    border-radius: 0 0 20px 20px;
+    position: absolute;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .notch-camera { width: 10px; height: 10px; background: #1a1a1a; border-radius: 50%; border: 1px solid #222; }
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 28px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    position: absolute;
+    width: 100%;
+    top: 14px;
+  }
+  .screen-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* GLOBAL NAV */
+  .bottom-nav {
+    height: 72px;
+    background: var(--dark);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 20px;
+    padding-bottom: 8px;
+    flex-shrink: 0;
+  }
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    opacity: 0.4;
+    flex: 1;
+  }
+  .nav-item.active { opacity: 1; }
+  .nav-icon {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+  .nav-item.active .nav-label { color: var(--white); }
+
+  /* ===== SCREEN 1: HOME / CURRENT STATE ===== */
+  .home-screen { background: var(--black); }
+
+  .state-bar {
+    background: var(--red);
+    padding: 8px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .state-label {
+    font-family: var(--cond);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .state-time {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: rgba(255,255,255,0.7);
+  }
+
+  .home-content { padding: 28px 24px; overflow-y: auto; flex: 1; }
+
+  .day-header {
+    margin-bottom: 28px;
+  }
+  .day-super {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 4px;
+  }
+  .day-title {
+    font-family: var(--cond);
+    font-size: 52px;
+    font-weight: 900;
+    line-height: 0.9;
+    letter-spacing: -1px;
+    color: var(--white);
+    text-transform: uppercase;
+  }
+  .day-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 8px;
+  }
+
+  /* Score strip */
+  .score-strip {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .score-block {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 12px;
+  }
+  .score-num {
+    font-family: var(--cond);
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--white);
+    line-height: 1;
+  }
+  .score-unit {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-top: 4px;
+  }
+  .score-block.highlight {
+    background: var(--red-dim);
+    border-color: var(--red);
+  }
+  .score-block.highlight .score-num { color: var(--red); }
+
+  /* Active block */
+  .active-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .active-block-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .block-status {
+    font-family: var(--mono);
+    font-size: 8px;
+    padding: 3px 8px;
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    letter-spacing: 1px;
+  }
+
+  .checklist-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .checklist-title {
+    padding: 14px 16px 10px;
+    font-family: var(--cond);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--white);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .check-item {
+    padding: 13px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .check-item:last-child { border-bottom: none; }
+  .check-box {
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--border2);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .check-box.done {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .check-text {
+    font-family: var(--body);
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text);
+    flex: 1;
+  }
+  .check-item.done-item .check-text {
+    color: var(--text3);
+    text-decoration: line-through;
+    text-decoration-color: var(--text3);
+  }
+  .check-meta {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+  }
+
+  /* Progress bar */
+  .progress-bar-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .progress-bar-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .progress-bar-name {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .progress-bar-val {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--amber);
+  }
+  .progress-track {
+    height: 3px;
+    background: var(--border);
+    position: relative;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--amber);
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+  .progress-fill.green { background: var(--green); }
+
+  /* URGE button */
+  .urge-btn {
+    width: 100%;
+    background: transparent;
+    border: 1.5px solid var(--red);
+    color: var(--red);
+    font-family: var(--cond);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    padding: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 8px;
+    margin-bottom: 16px;
+  }
+
+  /* ===== SCREEN 2: DAILY CHECKLIST DETAIL ===== */
+  .detail-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .detail-back {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .detail-title {
+    font-family: var(--cond);
+    font-size: 36px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--white);
+    line-height: 1;
+  }
+  .detail-subtitle {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    margin-top: 6px;
+  }
+  .detail-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  .block-section {
+    margin-bottom: 24px;
+  }
+  .block-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .block-section-title {
+    font-family: var(--cond);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+  .block-section-time {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+  }
+
+  /* State pill */
+  .state-pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border: 1px solid;
+    margin-bottom: 14px;
+  }
+  .state-pill.red { color: var(--red); border-color: var(--red); }
+  .state-pill.amber { color: var(--amber); border-color: var(--amber); }
+  .state-pill.green { color: var(--green); border-color: var(--green); }
+  .state-pill.dim { color: var(--text3); border-color: var(--text3); }
+
+  .keystone-banner {
+    background: var(--amber-dim);
+    border: 1px solid var(--amber);
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .keystone-text {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--amber);
+  }
+
+  .step-item {
+    display: flex;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+  .step-item:last-child { border-bottom: none; }
+  .step-num {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    width: 16px;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  .step-content { flex: 1; }
+  .step-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .step-note {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+  }
+  .step-action {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--amber);
+    padding: 4px 8px;
+    border: 1px solid var(--amber);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  /* ===== SCREEN 3: URGE PROTOCOL ===== */
+  .urge-screen { background: var(--black); }
+  .urge-top {
+    background: var(--red);
+    padding: 24px 24px 20px;
+    flex-shrink: 0;
+  }
+  .urge-head {
+    font-family: var(--cond);
+    font-size: 48px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -1px;
+    color: #fff;
+    line-height: 0.9;
+  }
+  .urge-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 10px;
+    letter-spacing: 1px;
+  }
+  .urge-body { flex: 1; overflow-y: auto; padding: 24px; }
+
+  .timer-block {
+    text-align: center;
+    padding: 32px 0;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .timer-num {
+    font-family: var(--mono);
+    font-size: 64px;
+    font-weight: 700;
+    color: var(--red);
+    letter-spacing: -2px;
+    line-height: 1;
+  }
+  .timer-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-top: 8px;
+  }
+  .timer-start {
+    display: inline-block;
+    background: var(--red);
+    color: #fff;
+    font-family: var(--cond);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 10px 28px;
+    margin-top: 16px;
+    cursor: pointer;
+  }
+
+  .urge-steps { display: flex; flex-direction: column; gap: 2px; margin-bottom: 24px; }
+  .urge-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .urge-step.active-step {
+    background: var(--red-dim);
+    border-color: var(--red);
+  }
+  .urge-step-n {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text3);
+    width: 28px;
+    flex-shrink: 0;
+  }
+  .urge-step.active-step .urge-step-n { color: var(--red); }
+  .urge-step-text {
+    flex: 1;
+    font-family: var(--cond);
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text2);
+  }
+  .urge-step.active-step .urge-step-text { color: var(--white); }
+  .urge-step-check { width: 18px; height: 18px; border: 1.5px solid var(--border2); flex-shrink: 0; }
+  .urge-step-check.done { background: var(--green); border-color: var(--green); }
+
+  .wave-note {
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    line-height: 1.7;
+    letter-spacing: 0.5px;
+  }
+
+  /* ===== SCREEN 4: WEEKLY REVIEW ===== */
+  .review-header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .review-title {
+    font-family: var(--cond);
+    font-size: 32px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--white);
+    line-height: 1;
+  }
+  .review-date {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    margin-top: 6px;
+  }
+  .review-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px;
+  }
+  .metric-val {
+    font-family: var(--cond);
+    font-size: 38px;
+    font-weight: 900;
+    color: var(--white);
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+  .metric-unit { font-size: 18px; font-weight: 400; color: var(--text3); }
+  .metric-name {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-top: 6px;
+  }
+  .metric-card.good { border-color: var(--green); }
+  .metric-card.good .metric-val { color: var(--green); }
+  .metric-card.warn { border-color: var(--amber); }
+  .metric-card.warn .metric-val { color: var(--amber); }
+  .metric-card.bad { border-color: var(--red); }
+  .metric-card.bad .metric-val { color: var(--red); }
+
+  .compliance-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .compliance-row:last-child { border-bottom: none; }
+  .comp-rule {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text2);
+    flex: 1;
+  }
+  .comp-days {
+    display: flex;
+    gap: 4px;
+  }
+  .comp-day {
+    width: 20px;
+    height: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text3);
+  }
+  .comp-day.pass { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+  .comp-day.fail { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+
+  .phase-bar-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 8px;
+  }
+  .phase-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .phase-name {
+    font-family: var(--cond);
+    font-size: 20px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--white);
+  }
+  .phase-day {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--amber);
+  }
+  .phase-track {
+    height: 4px;
+    background: var(--border);
+    position: relative;
+    margin-bottom: 8px;
+  }
+  .phase-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: var(--amber);
+  }
+  .phase-note {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    letter-spacing: 0.5px;
+  }
+
+  /* ===== SCREEN 5: FAILURE CONTAINMENT ===== */
+  .failure-screen { background: var(--black); }
+  .failure-top {
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .failure-head {
+    font-family: var(--cond);
+    font-size: 42px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    color: var(--white);
+    line-height: 0.9;
+    margin-bottom: 8px;
+  }
+  .failure-sub {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    line-height: 1.7;
+  }
+  .failure-body { flex: 1; overflow-y: auto; padding: 24px; }
+
+  .immediate-action {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .ia-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+  }
+  .ia-items { display: flex; flex-direction: column; gap: 2px; }
+  .ia-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--black);
+    border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .ia-check { width: 16px; height: 16px; border: 1.5px solid var(--border2); flex-shrink: 0; }
+  .ia-text { font-size: 13px; color: var(--text); }
+
+  .diagnostic-section { margin-bottom: 16px; }
+  .diag-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .diag-options { display: flex; flex-wrap: wrap; gap: 6px; }
+  .diag-opt {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    cursor: pointer;
+  }
+  .diag-opt.selected { border-color: var(--amber); color: var(--amber); }
+
+  .re-entry-btn {
+    width: 100%;
+    background: var(--green);
+    border: none;
+    color: #fff;
+    font-family: var(--cond);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    padding: 18px;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
+  .no-shame-note {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--text3);
+    margin-top: 14px;
+    line-height: 2;
+  }
+
+  /* Section divider for design frame */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin: 60px 0 40px;
+  }
+  .section-divider-line { flex: 1; height: 1px; background: var(--border); }
+  .section-divider-text {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  /* Design notes */
+  .design-notes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 60px;
+    padding-top: 40px;
+    border-top: 1px solid var(--border);
+  }
+  .note-card {
+    padding: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .note-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+  }
+  .note-content { font-size: 13px; color: var(--text2); line-height: 1.7; }
+  .note-content strong { color: var(--white); font-weight: 600; }
+
+  .color-swatches {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .swatch {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+  .swatch-block {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .swatch-name {
+    font-family: var(--mono);
+    font-size: 7px;
+    color: var(--text3);
+    letter-spacing: 0.5px;
+  }
+
+  /* Nav SVGs inline */
+  svg { display: block; }
+
+  .checkmark { display: none; }
+  .check-box.done .checkmark { display: block; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 2px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); }
+</style>
+</head>
+<body>
+
+<div class="canvas-header">
+  <div class="canvas-title">Design System /</div>
+  <div class="canvas-name">STABILITY OS v1</div>
+  <div class="version-tag">v1.0 · READY TO DEV</div>
+</div>
+
+<!-- ROW 1: MAIN SCREENS -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-text">Primary Screens</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="screens-row">
+
+  <!-- SCREEN 1: HOME -->
+  <div class="screen-group">
+    <div class="phone">
+      <div class="phone-notch">
+        <div class="notch-bar"><div class="notch-camera"></div></div>
+        <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+      </div>
+      <div class="screen-body home-screen">
+        <div class="state-bar">
+          <div class="state-label">⬤ VULNERABLE TRANSITION</div>
+          <div class="state-time">4:07 PM</div>
+        </div>
+        <div class="home-content">
+          <div class="day-header">
+            <div class="day-super">Thursday, Feb 26</div>
+            <div class="day-title">DAY<br>12</div>
+            <div class="day-sub">Phase 1 · Stability</div>
+          </div>
+
+          <div class="score-strip">
+            <div class="score-block">
+              <div class="score-num">3<span style="font-size:18px;color:var(--text3)">/5</span></div>
+              <div class="score-unit">Tasks Done</div>
+            </div>
+            <div class="score-block highlight">
+              <div class="score-num">1</div>
+              <div class="score-unit">Violations</div>
+            </div>
+            <div class="score-block">
+              <div class="score-num">67<span style="font-size:14px;color:var(--text3)">%</span></div>
+              <div class="score-unit">Compliance</div>
+            </div>
+          </div>
+
+          <div class="active-block-header">
+            <div class="active-block-label">// active block</div>
+            <div class="block-status">IN PROGRESS</div>
+          </div>
+
+          <div class="checklist-card">
+            <div class="checklist-title">
+              4PM RESET
+              <span style="font-family:var(--mono);font-size:9px;color:var(--text3)">2/6 done</span>
+            </div>
+            <div class="check-item done-item">
+              <div class="check-box done">
+                <svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+              </div>
+              <div class="check-text">Drink water</div>
+            </div>
+            <div class="check-item done-item">
+              <div class="check-box done">
+                <svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+              </div>
+              <div class="check-text">Snack</div>
+            </div>
+            <div class="check-item" style="background: rgba(200,125,47,0.06);">
+              <div class="check-box" style="border-color:var(--amber)"></div>
+              <div class="check-text" style="color:var(--white)">5-min walk</div>
+              <div class="check-meta" style="color:var(--amber)">TIMER →</div>
+            </div>
+            <div class="check-item">
+              <div class="check-box"></div>
+              <div class="check-text">30 pushups / squats</div>
+            </div>
+            <div class="check-item">
+              <div class="check-box"></div>
+              <div class="check-text">Quick rinse</div>
+            </div>
+            <div class="check-item">
+              <div class="check-box"></div>
+              <div class="check-text">30-min Business Block</div>
+              <div class="check-meta">LOCKED</div>
+            </div>
+          </div>
+
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-label">
+              <div class="progress-bar-name">Deep Work Today</div>
+              <div class="progress-bar-val">0 / 90 MIN</div>
+            </div>
+            <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
+          </div>
+
+          <div class="progress-bar-wrap" style="margin-bottom:16px">
+            <div class="progress-bar-label">
+              <div class="progress-bar-name">Social Reward</div>
+              <div class="progress-bar-val" style="color:var(--text3)">LOCKED UNTIL RESET ✓</div>
+            </div>
+            <div class="progress-track"><div class="progress-fill green" style="width:0%"></div></div>
+          </div>
+
+          <button class="urge-btn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v6M4 8l3 5 3-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            URGE PROTOCOL
+          </button>
+
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item active">
+            <div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="2" width="7" height="7" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="11" width="7" height="7" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="7" height="7" stroke="currentColor" stroke-width="1.5"/></svg></div>
+            <div class="nav-label">Today</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 5h12M4 10h12M4 15h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+            <div class="nav-label">Log</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 15l4-4 4 2 4-6 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="nav-label">Stats</div>
+          </div>
+          <div class="nav-item">
+            <div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+            <div class="nav-label">Profile</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-label">01 — HOME STATE</div>
+  </div>
+
+  <!-- SCREEN 2: DAILY LOG DETAIL -->
+  <div class="screen-group">
+    <div class="phone">
+      <div class="phone-notch">
+        <div class="notch-bar"><div class="notch-camera"></div></div>
+        <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+      </div>
+      <div class="screen-body">
+        <div class="detail-header">
+          <div class="detail-back">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 2L4 6l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Today
+          </div>
+          <div class="detail-title">FULL<br>SCHEDULE</div>
+          <div class="detail-subtitle">Feb 26 · All Blocks</div>
+        </div>
+        <div class="detail-body">
+
+          <div class="block-section">
+            <div class="block-section-header">
+              <div class="block-section-title">Morning Activation</div>
+              <div class="block-section-time">8:15 – 9:00</div>
+            </div>
+            <div class="state-pill green">Complete</div>
+            <div class="check-item done-item" style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+              <div class="check-box done"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+              <div class="check-text">Stand immediately</div>
+            </div>
+            <div class="check-item done-item" style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+              <div class="check-box done"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+              <div class="check-text">Water</div>
+            </div>
+            <div class="check-item done-item" style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+              <div class="check-box done"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+              <div class="check-text">Face wash</div>
+            </div>
+            <div class="check-item done-item" style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+              <div class="check-box done"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+              <div class="check-text">5 pushups</div>
+            </div>
+            <div class="check-item done-item" style="padding: 10px 0;">
+              <div class="check-box done"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+              <div class="check-text">Sunlight exposure</div>
+            </div>
+          </div>
+
+          <div class="block-section" style="margin-top: 20px;">
+            <div class="block-section-header">
+              <div class="block-section-title">4PM Reset</div>
+              <div class="block-section-time">4:00 – 5:00</div>
+            </div>
+            <div class="keystone-banner">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v5M6 9v2" stroke="#C87D2F" stroke-width="1.5" stroke-linecap="round"/><circle cx="6" cy="6" r="5" stroke="#C87D2F" stroke-width="1"/></svg>
+              <div class="keystone-text">KEYSTONE — Complete before any scroll</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">01</div>
+              <div class="step-content"><div class="step-name" style="text-decoration: line-through; color:var(--text3)">Drink water</div></div>
+              <div style="width:16px;height:16px;background:var(--green);border:none;border-radius:0;flex-shrink:0;display:flex;align-items:center;justify-content:center;"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">02</div>
+              <div class="step-content"><div class="step-name" style="text-decoration: line-through; color:var(--text3)">Snack</div></div>
+              <div style="width:16px;height:16px;background:var(--green);flex-shrink:0;display:flex;align-items:center;justify-content:center;"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+            </div>
+            <div class="step-item" style="border-left: 2px solid var(--amber); padding-left: 12px;">
+              <div class="step-num" style="color:var(--amber)">03</div>
+              <div class="step-content"><div class="step-name" style="color:var(--white)">5-min walk</div><div class="step-note">Timer running — step outside</div></div>
+              <div class="step-action">START</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">04</div>
+              <div class="step-content"><div class="step-name">30 pushups / squats</div></div>
+              <div class="check-box" style="width:16px;height:16px;border:1.5px solid var(--border2)"></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">05</div>
+              <div class="step-content"><div class="step-name">Quick rinse</div></div>
+              <div class="check-box" style="width:16px;height:16px;"></div>
+            </div>
+            <div class="step-item" style="opacity:0.4">
+              <div class="step-num">06</div>
+              <div class="step-content"><div class="step-name">30-min Business Block</div><div class="step-note">Unlocks after step 5</div></div>
+              <div style="font-family:var(--mono);font-size:8px;color:var(--text3);padding:4px 8px;border:1px solid var(--border)">LOCKED</div>
+            </div>
+          </div>
+
+          <div class="block-section" style="margin-top: 20px;">
+            <div class="block-section-header">
+              <div class="block-section-title">Deep Work</div>
+              <div class="block-section-time">7:30 – 9:00</div>
+            </div>
+            <div class="state-pill dim">Upcoming</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-label">
+                <div class="progress-bar-name">Target</div>
+                <div class="progress-bar-val" style="color:var(--text3)">0 / 90 MIN</div>
+              </div>
+              <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
+            </div>
+          </div>
+
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item"><div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="2" width="7" height="7" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="11" width="7" height="7" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="7" height="7" stroke="currentColor" stroke-width="1.5"/></svg></div><div class="nav-label">Today</div></div>
+          <div class="nav-item active"><div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 5h12M4 10h12M4 15h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="nav-label">Log</div></div>
+          <div class="nav-item"><div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 15l4-4 4 2 4-6 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="nav-label">Stats</div></div>
+          <div class="nav-item"><div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="nav-label">Profile</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-label">02 — SCHEDULE DETAIL</div>
+  </div>
+
+  <!-- SCREEN 3: URGE PROTOCOL -->
+  <div class="screen-group">
+    <div class="phone">
+      <div class="phone-notch">
+        <div class="notch-bar"><div class="notch-camera"></div></div>
+        <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+      </div>
+      <div class="screen-body urge-screen">
+        <div class="urge-top">
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:3px;color:rgba(255,255,255,0.5);margin-bottom:8px">PROTOCOL ACTIVE</div>
+          <div class="urge-head">URGE<br>WAVE</div>
+          <div class="urge-sub">8–15 minutes. This will pass. Execute the steps.</div>
+        </div>
+        <div class="urge-body">
+          <div class="timer-block">
+            <div class="timer-num">12:00</div>
+            <div class="timer-label">Estimated wave duration</div>
+            <div class="timer-start">START TIMER</div>
+          </div>
+
+          <div class="urge-steps">
+            <div class="urge-step active-step">
+              <div class="urge-step-n">01</div>
+              <div class="urge-step-text">Stand up now</div>
+              <div class="urge-step-check"></div>
+            </div>
+            <div class="urge-step">
+              <div class="urge-step-n">02</div>
+              <div class="urge-step-text">40 pushups</div>
+              <div class="urge-step-check"></div>
+            </div>
+            <div class="urge-step">
+              <div class="urge-step-n">03</div>
+              <div class="urge-step-text">Cold water</div>
+              <div class="urge-step-check"></div>
+            </div>
+            <div class="urge-step">
+              <div class="urge-step-n">04</div>
+              <div class="urge-step-text">3-min breathe</div>
+              <div class="urge-step-check"></div>
+            </div>
+            <div class="urge-step">
+              <div class="urge-step-n">05</div>
+              <div class="urge-step-text">Redirect task</div>
+              <div class="urge-step-check"></div>
+            </div>
+          </div>
+
+          <div class="wave-note">
+            The urge is information, not a command.<br>
+            You are not the urge.<br>
+            You are the one who watches it pass.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-label">03 — URGE PROTOCOL</div>
+  </div>
+
+</div>
+
+<!-- ROW 2 -->
+<div class="screens-row">
+
+  <!-- SCREEN 4: WEEKLY REVIEW -->
+  <div class="screen-group">
+    <div class="phone">
+      <div class="phone-notch">
+        <div class="notch-bar"><div class="notch-camera"></div></div>
+        <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+      </div>
+      <div class="screen-body">
+        <div class="review-header">
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:6px">WEEK 2 REVIEW</div>
+          <div class="review-title">SUNDAY<br>CALIBRATION</div>
+          <div class="review-date">Feb 17 – Feb 23 · Phase 1</div>
+        </div>
+        <div class="review-body">
+
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--text3);margin-bottom:10px">// metrics</div>
+          <div class="metric-grid">
+            <div class="metric-card good">
+              <div class="metric-val">73<span class="metric-unit">%</span></div>
+              <div class="metric-name">Rule Compliance</div>
+            </div>
+            <div class="metric-card good">
+              <div class="metric-val">0</div>
+              <div class="metric-name">Incidents</div>
+            </div>
+            <div class="metric-card warn">
+              <div class="metric-val">4.2<span class="metric-unit">h</span></div>
+              <div class="metric-name">Deep Work</div>
+            </div>
+            <div class="metric-card warn">
+              <div class="metric-val">3</div>
+              <div class="metric-name">Agency Outputs</div>
+            </div>
+            <div class="metric-card bad">
+              <div class="metric-val">1.1<span class="metric-unit">h</span></div>
+              <div class="metric-name">Placement Hrs</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-val">11<span class="metric-unit" style="font-size:14px">:20</span></div>
+              <div class="metric-name">Avg Sleep</div>
+            </div>
+          </div>
+
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--text3);margin-bottom:10px">// rule compliance by day</div>
+          <div style="background:var(--surface);border:1px solid var(--border);padding:14px;margin-bottom:20px;">
+            <div class="compliance-row">
+              <div class="comp-rule">No laptop on bed</div>
+              <div class="comp-days">
+                <div class="comp-day pass">M</div><div class="comp-day pass">T</div><div class="comp-day fail">W</div><div class="comp-day pass">T</div><div class="comp-day pass">F</div><div class="comp-day pass">S</div><div class="comp-day pass">S</div>
+              </div>
+            </div>
+            <div class="compliance-row">
+              <div class="comp-rule">No screens lying down</div>
+              <div class="comp-days">
+                <div class="comp-day pass">M</div><div class="comp-day fail">T</div><div class="comp-day fail">W</div><div class="comp-day pass">T</div><div class="comp-day pass">F</div><div class="comp-day pass">S</div><div class="comp-day pass">S</div>
+              </div>
+            </div>
+            <div class="compliance-row">
+              <div class="comp-rule">WiFi off 9:45 PM</div>
+              <div class="comp-days">
+                <div class="comp-day pass">M</div><div class="comp-day pass">T</div><div class="comp-day pass">W</div><div class="comp-day pass">T</div><div class="comp-day fail">F</div><div class="comp-day fail">S</div><div class="comp-day pass">S</div>
+              </div>
+            </div>
+            <div class="compliance-row">
+              <div class="comp-rule">4PM reset before scroll</div>
+              <div class="comp-days">
+                <div class="comp-day pass">M</div><div class="comp-day pass">T</div><div class="comp-day pass">W</div><div class="comp-day fail">T</div><div class="comp-day pass">F</div><div class="comp-day pass">S</div><div class="comp-day pass">S</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="phase-bar-wrap">
+            <div class="phase-bar-header">
+              <div class="phase-name">Phase 1 — Stability</div>
+              <div class="phase-day">Day 12 / 30</div>
+            </div>
+            <div class="phase-track"><div class="phase-fill" style="width:40%"></div></div>
+            <div class="phase-note">Phase 2 unlocks at 80% compliance · You're at 73%</div>
+          </div>
+
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item"><div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="2" width="7" height="7" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="11" width="7" height="7" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="7" height="7" stroke="currentColor" stroke-width="1.5"/></svg></div><div class="nav-label">Today</div></div>
+          <div class="nav-item"><div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 5h12M4 10h12M4 15h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="nav-label">Log</div></div>
+          <div class="nav-item active"><div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M2 15l4-4 4 2 4-6 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="nav-label">Stats</div></div>
+          <div class="nav-item"><div class="nav-icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="nav-label">Profile</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-label">04 — WEEKLY REVIEW</div>
+  </div>
+
+  <!-- SCREEN 5: FAILURE CONTAINMENT -->
+  <div class="screen-group">
+    <div class="phone">
+      <div class="phone-notch">
+        <div class="notch-bar"><div class="notch-camera"></div></div>
+        <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+      </div>
+      <div class="screen-body failure-screen">
+        <div class="failure-top">
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:8px">FAILURE CONTAINMENT</div>
+          <div class="failure-head">RE-<br>ENTRY</div>
+          <div class="failure-sub">Relapse ≠ failure. Rule violation = structural failure.<br>Treat them differently. Execute the next step.</div>
+        </div>
+        <div class="failure-body">
+
+          <div class="immediate-action">
+            <div class="ia-label">// immediate actions (non-negotiable)</div>
+            <div class="ia-items">
+              <div class="ia-item">
+                <div class="ia-check"></div>
+                <div class="ia-text">10 pushups. Right now.</div>
+              </div>
+              <div class="ia-item">
+                <div class="ia-check"></div>
+                <div class="ia-text">Write 3 lines below</div>
+              </div>
+              <div class="ia-item">
+                <div class="ia-check"></div>
+                <div class="ia-text">Resume scheduled block</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="diagnostic-section">
+            <div class="diag-label">// what environment rule broke?</div>
+            <div class="diag-options">
+              <div class="diag-opt selected">Laptop on bed</div>
+              <div class="diag-opt">Screens down</div>
+              <div class="diag-opt">WiFi on</div>
+              <div class="diag-opt">Scrolled early</div>
+              <div class="diag-opt">None</div>
+            </div>
+          </div>
+
+          <div class="diagnostic-section">
+            <div class="diag-label">// what state were you in?</div>
+            <div class="diag-options">
+              <div class="diag-opt">Morning</div>
+              <div class="diag-opt selected">4-7 PM</div>
+              <div class="diag-opt">Late night</div>
+              <div class="diag-opt">Other</div>
+            </div>
+          </div>
+
+          <div class="diagnostic-section">
+            <div class="diag-label">// emotion that preceded?</div>
+            <div class="diag-options">
+              <div class="diag-opt">Boredom</div>
+              <div class="diag-opt selected">Anxiety</div>
+              <div class="diag-opt">Loneliness</div>
+              <div class="diag-opt">Fatigue</div>
+              <div class="diag-opt">Frustration</div>
+            </div>
+          </div>
+
+          <button class="re-entry-btn">RE-ENTER SCHEDULE</button>
+          <div class="no-shame-note">
+            No streak reset.<br>
+            No shame metrics.<br>
+            Just re-entry.
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="screen-label">05 — FAILURE CONTAINMENT</div>
+  </div>
+
+  <!-- SCREEN 6: SHUTDOWN PROTOCOL -->
+  <div class="screen-group">
+    <div class="phone">
+      <div class="phone-notch">
+        <div class="notch-bar"><div class="notch-camera"></div></div>
+        <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+      </div>
+      <div class="screen-body">
+        <div style="background: #0D0D0D; flex:1; display:flex; flex-direction:column;">
+          <div style="padding: 24px; border-bottom: 1px solid var(--border); flex-shrink:0;">
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:8px">9:45 PM — SHUTDOWN</div>
+            <div style="font-family:var(--cond);font-size:44px;font-weight:900;text-transform:uppercase;color:var(--white);line-height:0.9">CLOSE<br>DOWN</div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:8px;letter-spacing:1px">Environment closes. Sleep mode begins.</div>
+          </div>
+
+          <div style="flex:1;overflow-y:auto;padding:24px;">
+
+            <!-- Today's scoreboard -->
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:12px">// today's scoreboard</div>
+            <div style="background:var(--surface);border:1px solid var(--border);padding:20px;margin-bottom:20px;text-align:center;">
+              <div style="font-family:var(--cond);font-size:72px;font-weight:900;color:var(--white);line-height:1;letter-spacing:-2px">4<span style="font-size:36px;color:var(--text3)">/5</span></div>
+              <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text3);margin-top:8px;">RESPONSIBILITIES EXECUTED</div>
+              <div style="width:60%;height:3px;background:var(--border);margin:16px auto 0;position:relative;">
+                <div style="width:80%;height:100%;background:var(--green);position:absolute;left:0;top:0;"></div>
+              </div>
+            </div>
+
+            <!-- Shutdown checklist -->
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:10px">// shutdown sequence</div>
+            <div style="background:var(--surface);border:1px solid var(--border);margin-bottom:16px;">
+              <div class="check-item">
+                <div class="check-box done"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></div>
+                <div class="check-text">WiFi off</div>
+              </div>
+              <div class="check-item" style="background:rgba(200,125,47,0.06)">
+                <div class="check-box" style="border-color:var(--amber)"></div>
+                <div class="check-text" style="color:var(--white)">Anxiety journal (10 min)</div>
+                <div style="font-family:var(--mono);font-size:9px;color:var(--amber)">OPEN →</div>
+              </div>
+              <div class="check-item">
+                <div class="check-box"></div>
+                <div class="check-text">Scoreboard logged</div>
+              </div>
+              <div class="check-item">
+                <div class="check-box"></div>
+                <div class="check-text">Devices away from bed</div>
+              </div>
+            </div>
+
+            <!-- Journal prompts -->
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:10px">// journal prompts</div>
+            <div style="background:var(--surface);border:1px solid var(--border);padding:14px;margin-bottom:12px;">
+              <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:6px">What stressed me today?</div>
+              <div style="height:36px;border-bottom:1px solid var(--border);"></div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);padding:14px;margin-bottom:12px;">
+              <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:6px">What am I avoiding?</div>
+              <div style="height:36px;border-bottom:1px solid var(--border);"></div>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);padding:14px;margin-bottom:24px;">
+              <div style="font-size:12px;color:var(--text3);font-family:var(--mono);margin-bottom:6px">What is in my control tomorrow?</div>
+              <div style="height:36px;border-bottom:1px solid var(--border);"></div>
+            </div>
+
+            <div style="text-align:center;font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text3);line-height:2.2;padding-bottom:20px;">
+              BED IS FOR SLEEP ONLY.<br>
+              THE SYSTEM CONTINUES TOMORROW.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-label">06 — SHUTDOWN PROTOCOL</div>
+  </div>
+
+</div>
+
+<!-- DESIGN SYSTEM -->
+<div class="section-divider">
+  <div class="section-divider-line"></div>
+  <div class="section-divider-text">Design System</div>
+  <div class="section-divider-line"></div>
+</div>
+
+<div class="design-notes">
+  <div class="note-card">
+    <div class="note-label">Typography</div>
+    <div class="note-content">
+      <div style="font-family:var(--cond);font-size:28px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;color:var(--white)">Barlow Condensed</div>
+      <div style="margin-bottom:12px;font-size:11px;color:var(--text3)">Display / Headers / Numbers — 900 weight</div>
+      <div style="font-family:var(--mono);font-size:13px;margin-bottom:4px">Space Mono</div>
+      <div style="margin-bottom:12px;font-size:11px;color:var(--text3)">Labels / Timestamps / Meta — 400</div>
+      <div style="font-size:14px;margin-bottom:4px">Barlow Regular</div>
+      <div style="font-size:11px;color:var(--text3)">Body text / Checklist items — 400/500</div>
+    </div>
+  </div>
+
+  <div class="note-card">
+    <div class="note-label">Color System</div>
+    <div class="note-content">
+      <div class="color-swatches">
+        <div class="swatch"><div class="swatch-block" style="background:#0A0A0A;border:1px solid #333;"></div><div class="swatch-name">#0A0A0A<br>Black</div></div>
+        <div class="swatch"><div class="swatch-block" style="background:#181818;"></div><div class="swatch-name">#181818<br>Surface</div></div>
+        <div class="swatch"><div class="swatch-block" style="background:#2A2A2A;"></div><div class="swatch-name">#2A2A2A<br>Border</div></div>
+        <div class="swatch"><div class="swatch-block" style="background:#D94040;"></div><div class="swatch-name">#D94040<br>Red</div></div>
+        <div class="swatch"><div class="swatch-block" style="background:#C87D2F;"></div><div class="swatch-name">#C87D2F<br>Amber</div></div>
+        <div class="swatch"><div class="swatch-block" style="background:#4A8C5C;"></div><div class="swatch-name">#4A8C5C<br>Green</div></div>
+        <div class="swatch"><div class="swatch-block" style="background:#E8E4DC;"></div><div class="swatch-name">#E8E4DC<br>Text</div></div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text3);line-height:1.7">Red = active alert / urge / violation<br>Amber = in-progress / warning<br>Green = complete / safe</div>
+    </div>
+  </div>
+
+  <div class="note-card">
+    <div class="note-label">Design Principles</div>
+    <div class="note-content" style="line-height:2">
+      <strong>No rounded corners.</strong> Sharp edges. This is a system, not a social app.<br>
+      <strong>No icons as decoration.</strong> Every element earns its place.<br>
+      <strong>No gradients.</strong> Flat, dense, honest.<br>
+      <strong>Monospace for data.</strong> Numbers and labels always mono.<br>
+      <strong>Condensed for titles.</strong> Maximum impact, minimum space.<br>
+      <strong>3-color semantic system.</strong> Red/Amber/Green only.
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:60px;padding:24px;border:1px solid var(--border);background:var(--surface);">
+  <div style="font-family:var(--mono);font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:16px">APP ARCHITECTURE — SCREEN MAP</div>
+  <div style="font-family:var(--body);font-size:13px;color:var(--text2);line-height:2.2;">
+    <strong style="color:var(--white)">Tab 1: TODAY</strong> — Home state display, active block checklist, score strip, urge button<br>
+    <strong style="color:var(--white)">Tab 2: LOG</strong> — Full day schedule detail, all 7 blocks, step timers, progress tracking<br>
+    <strong style="color:var(--white)">Tab 3: STATS</strong> — Weekly calibration, rule compliance grid, phase progress, metrics<br>
+    <strong style="color:var(--white)">Tab 4: PROFILE</strong> — Phase status, identity log, system settings<br>
+    <strong style="color:var(--white)">Overlay: URGE PROTOCOL</strong> — Full-screen takeover, 5-step sequence, countdown timer<br>
+    <strong style="color:var(--white)">Overlay: FAILURE CONTAINMENT</strong> — Triggered on relapse tap, diagnostic + re-entry<br>
+    <strong style="color:var(--white)">State Bar</strong> — Always visible, time-based state detection (5 states auto-switch)<br>
+  </div>
+</div>
+
+</body>
+</html>

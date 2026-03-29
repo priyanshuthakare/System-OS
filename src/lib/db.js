@@ -2,6 +2,7 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('StabilityOS');
 
+// v1 → original schema
 db.version(1).stores({
     profiles: '++id, phase_id, start_date',
     days: 'date, tasks_completed, violations, deep_work_minutes, compliance_score',
@@ -15,10 +16,18 @@ db.version(1).stores({
     weekly_reviews: '++id, week_start_date, compliance_pct, relapse_count, deep_work_hrs, friction_note, unstable_note, increase_note, decrease_note',
     journal_entries: '++id, date, stress_note, avoidance_note, control_note',
     phases: '++id, name, required_compliance_pct, required_days',
+    user_preferences: 'key',
 });
 
-// No hardcoded seeds — Supabase is the source of truth.
-// The useSyncEngine hook pulls user data from Supabase into these local tables on login.
+// v2 → adds active_days (behavioral day counter) to profiles
+db.version(2).stores({
+    profiles: '++id, phase_id, start_date, active_days, last_active_date',
+}).upgrade(tx => {
+    return tx.table('profiles').toCollection().modify(profile => {
+        if (profile.active_days === undefined) profile.active_days = 1
+        if (profile.last_active_date === undefined) profile.last_active_date = null
+    })
+});
 
 /**
  * @intent Get or create a day record for local metrics tracking
@@ -31,4 +40,25 @@ export async function getOrCreateDay(dateString) {
         await db.days.add(day);
     }
     return day;
+}
+
+/**
+ * @intent Increments the active_days counter in the user's Dexie profile.
+ * Only fires once per calendar day. Guards with last_active_date comparison.
+ * @param {string} todayStr - YYYY-MM-DD
+ */
+export async function incrementActiveDayIfNeeded(todayStr) {
+    try {
+        const profile = await db.profiles.get(1)
+        if (!profile) return
+
+        if (profile.last_active_date === todayStr) return // already counted today
+
+        await db.profiles.update(1, {
+            active_days: (profile.active_days || 1) + 1,
+            last_active_date: todayStr
+        })
+    } catch (e) {
+        console.warn('[db] incrementActiveDayIfNeeded failed:', e)
+    }
 }

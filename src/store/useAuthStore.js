@@ -8,12 +8,16 @@ import { supabase } from '../lib/supabase'
  * @param {object|null} state.profile - The user's profile row from public.profiles
  * @param {boolean} state.loading - Whether the auth check is still in progress
  * @param {boolean} state.isOnboarded - Whether the user has completed onboarding (has states)
+ * @param {boolean} state.needsEmailConfirmation - Whether signup is pending email verification
+ * @param {string|null} state.pendingEmail - Email awaiting verification
  */
 export const useAuthStore = create((set, get) => ({
     user: null,
     profile: null,
     loading: true,
     isOnboarded: false,
+    needsEmailConfirmation: false,
+    pendingEmail: null,
 
     /** Initialize auth listener — call once in App.jsx */
     init: async () => {
@@ -25,13 +29,13 @@ export const useAuthStore = create((set, get) => ({
         }
         set({ loading: false })
 
-        // 2. Listen for auth changes (login/logout/token refresh)
-        supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (session?.user) {
-                set({ user: session.user })
+        // 2. Listen for auth changes (login/logout/token refresh/OAuth callback)
+        supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' && session?.user) {
+                set({ user: session.user, needsEmailConfirmation: false, pendingEmail: null })
                 await get().fetchProfile(session.user)
-            } else {
-                set({ user: null, profile: null, isOnboarded: false })
+            } else if (event === 'SIGNED_OUT') {
+                set({ user: null, profile: null, isOnboarded: false, needsEmailConfirmation: false, pendingEmail: null })
             }
         })
     },
@@ -48,7 +52,6 @@ export const useAuthStore = create((set, get) => ({
                 console.error('Failed to fetch profile:', profileError.message)
             }
 
-            // Check if user has created any states (onboarding complete)
             const { count, error: countError } = await supabase
                 .from('states')
                 .select('*', { count: 'exact', head: true })
@@ -65,7 +68,6 @@ export const useAuthStore = create((set, get) => ({
             })
         } catch (e) {
             console.error('fetchProfile crashed:', e)
-            // Still set user so the app doesn't get stuck on loading
             set({ user, profile: { id: user.id, has_seen_guide: false }, isOnboarded: false })
         }
     },
@@ -77,7 +79,15 @@ export const useAuthStore = create((set, get) => ({
             options: { data: { display_name: displayName } }
         })
         if (error) throw error
-        return data
+
+        // Supabase returns user but no session when email confirmation is required
+        if (data.user && !data.session) {
+            set({ needsEmailConfirmation: true, pendingEmail: email })
+            return { confirmationRequired: true }
+        }
+
+        // If email confirmation is disabled in Supabase (auto-confirm), session exists immediately
+        return { confirmationRequired: false }
     },
 
     signIn: async (email, password) => {
@@ -89,22 +99,40 @@ export const useAuthStore = create((set, get) => ({
         return data
     },
 
-    signOut: async () => {
-        await supabase.auth.signOut()
-        set({ user: null, profile: null, isOnboarded: false })
+    /**
+     * @intent Triggers Google OAuth flow. On web, opens a redirect.
+     * On Android (Capacitor), this will handle via the system browser.
+     */
+    signInWithGoogle: async () => {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'select_account',
+                }
+            }
+        })
+        if (error) throw error
+        return data
     },
 
-    /** Mark onboarding as complete (called after state creation) */
+    signOut: async () => {
+        await supabase.auth.signOut()
+        set({ user: null, profile: null, isOnboarded: false, needsEmailConfirmation: false, pendingEmail: null })
+    },
+
+    clearConfirmationState: () => {
+        set({ needsEmailConfirmation: false, pendingEmail: null })
+    },
+
     setOnboarded: () => {
         set({ isOnboarded: true })
     },
 
-    /** Dismiss the guide overlay permanently */
     markGuideSeen: async () => {
-        // Optimistic update — immediately hide the overlay
         set(state => ({ profile: { ...state.profile, has_seen_guide: true } }))
-
-        // Then sync to Supabase in the background
         try {
             const userId = get().user?.id
             if (!userId) return

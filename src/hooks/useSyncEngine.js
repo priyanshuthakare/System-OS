@@ -98,7 +98,7 @@ export function useSyncEngine() {
                 await db.checklist_templates.bulkAdd(templates)
             }
 
-            // Map Supabase rules → Dexie rules
+            // Map Supabase rules → Dexie rules (seed defaults if empty)
             if (rules?.length) {
                 const localRules = rules.map(r => ({
                     id: r.id,
@@ -107,6 +107,32 @@ export function useSyncEngine() {
                     description: r.description || ''
                 }))
                 await db.rules.bulkAdd(localRules)
+            } else {
+                // Seed 4 default structural rules for new users
+                const DEFAULT_RULES = [
+                    { title: 'No laptop on bed', violation_type: 'Structural Failure', description: 'Laptop must stay at desk' },
+                    { title: 'No screens lying down', violation_type: 'Structural Failure', description: 'All screen use must be seated upright' },
+                    { title: 'WiFi off by shutdown', violation_type: 'Structural Failure', description: 'WiFi router off at shutdown time' },
+                    { title: 'Reset before scroll', violation_type: 'Structural Failure', description: 'Complete 4PM reset before any social media' }
+                ]
+
+                const insertedRules = []
+                for (const rule of DEFAULT_RULES) {
+                    const { data, error: insertErr } = await supabase
+                        .from('rules')
+                        .insert({ user_id: user.id, ...rule })
+                        .select('id')
+                        .single()
+
+                    if (!insertErr && data) {
+                        insertedRules.push({ id: data.id, ...rule })
+                    }
+                }
+
+                if (insertedRules.length) {
+                    await db.rules.bulkAdd(insertedRules)
+                }
+                console.log(`[SyncEngine] Seeded ${insertedRules.length} default rules`)
             }
 
             // Seed phases (global, never user-editable)
@@ -116,14 +142,91 @@ export function useSyncEngine() {
                 { id: 3, name: 'Phase 3 - Expansion', required_compliance_pct: 90, required_days: 30 }
             ])
 
-            // Create minimal local profile
-            await db.profiles.add({
-                id: 1,
-                phase_id: 1,
-                start_date: new Date().toISOString().split('T')[0]
-            })
+            // Pull profile from Supabase to get real phase_id, start_date, and tier_status
+            const { data: remoteProfile } = await supabase
+                .from('profiles')
+                .select('phase_id, start_date, created_at, tier_status')
+                .eq('id', user.id)
+                .single()
+
+            // Only insert local profile if it doesn't already exist (preserves start_date across syncs)
+            const existingProfile = await db.profiles.get(1)
+            const todayStr = new Date().toISOString().split('T')[0]
+            if (!existingProfile) {
+                await db.profiles.add({
+                    id: 1,
+                    phase_id: remoteProfile?.phase_id || 1,
+                    start_date: remoteProfile?.start_date || remoteProfile?.created_at?.split('T')[0] || todayStr,
+                    tier_status: remoteProfile?.tier_status || 'free',
+                    active_days: 1,
+                    last_active_date: todayStr
+                })
+            } else {
+                // Update phase_id and tier_status if changed in Supabase, keep existing start_date + active_days
+                await db.profiles.update(1, {
+                    phase_id: remoteProfile?.phase_id || existingProfile.phase_id,
+                    tier_status: remoteProfile?.tier_status || existingProfile.tier_status || 'free'
+                })
+            }
+
+            // Seed user preferences from onboarding data (urge steps, recovery actions, diagnostics)
+            await db.user_preferences.clear()
+
+            // Derive physical anchors from the user's first state's checklists (onboarding "helps")
+            const physicalChecklists = checklists?.filter(c => c.category === 'physical') || []
+            const physicalAnchors = [...new Set(physicalChecklists.map(c => c.label))].slice(0, 3)
+            const defaultAnchors = ['Stand up now', 'Drink water', 'Walk 2 minutes']
+            const anchors = physicalAnchors.length > 0 ? physicalAnchors : defaultAnchors
+
+            await db.user_preferences.bulkPut([
+                {
+                    key: 'urge_steps',
+                    value: JSON.stringify([
+                        anchors[0] || 'Stand up now',
+                        anchors[1] || 'Cold water',
+                        anchors[2] || '3-min breathe',
+                        'Write what triggered this',
+                        'Redirect to scheduled task'
+                    ])
+                },
+                {
+                    key: 'urge_timer_minutes',
+                    value: '10'
+                },
+                {
+                    key: 'recovery_actions',
+                    value: JSON.stringify([
+                        anchors[0] || '10 pushups',
+                        'Drink a full glass of water',
+                        anchors[1] || 'Walk for 2 minutes',
+                        '30 seconds deep breathing',
+                        'Cold water face rinse'
+                    ])
+                },
+                {
+                    key: 'failure_immediate_actions',
+                    value: JSON.stringify([
+                        `${anchors[0] || '10 pushups'}. Right now.`,
+                        'Write 3 lines below',
+                        'Resume scheduled block'
+                    ])
+                },
+                {
+                    key: 'failure_rules',
+                    value: JSON.stringify(['Laptop on bed', 'Screens down', 'WiFi on', 'Scrolled early', 'None'])
+                },
+                {
+                    key: 'failure_phases',
+                    value: JSON.stringify((states || []).map(s => s.name).concat(['Other']))
+                },
+                {
+                    key: 'failure_emotions',
+                    value: JSON.stringify(['Boredom', 'Anxiety', 'Loneliness', 'Fatigue', 'Frustration'])
+                }
+            ])
 
             console.log(`[SyncEngine] SUCCESS: Synced ${states?.length || 0} states, ${checklists?.length || 0} checklists, ${rules?.length || 0} rules`)
+
         } catch (e) {
             console.error('[SyncEngine] Sync failed:', e)
         }

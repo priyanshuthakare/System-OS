@@ -1,4 +1,4 @@
-import { BarChart2, FileText, LayoutGrid, Moon, User } from 'lucide-react'
+import { FileText, Layers, LayoutGrid, Moon, User } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 
@@ -14,6 +14,7 @@ export default function BottomNav() {
         { id: 'today', label: 'Today', icon: LayoutGrid },
         { id: 'log', label: 'Log', icon: FileText },
         { id: 'closure', label: 'Closure', icon: Moon },
+        { id: 'settings', label: 'States', icon: Layers },
         { id: 'profile', label: 'Profile', icon: User },
     ]
 

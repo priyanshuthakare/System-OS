@@ -1,0 +1,439 @@
+
+STABILITY OS v1
+App Logic Specification
+
+Document Type  :  Product / Engineering Specification
+Version        :  1.0  —  Ready for Development
+System Name    :  STABILITY OS v1
+Audience       :  Developer, Designer, Product Manager
+
+CORE PRINCIPLE
+Environment > State > Action > Identity
+
+This document defines the complete behavioral logic of STABILITY OS v1 — a mobile application designed to replace oscillation (chaos → guilt → spike → collapse) with a stable execution loop. Every screen, state transition, trigger, lock, and response is specified here.
+ 
+1. SYSTEM OVERVIEW
+STABILITY OS is a behavioral regulation app. It is NOT a productivity tracker. It is NOT a habit streak app. It is a daily operating system that detects what mental-behavioral state the user is in at any given time and delivers the appropriate environment, task sequence, or protocol to maintain stability.
+
+The core insight: most behavioral failures happen not from lack of motivation but from unstructured transitions — especially the 4–7 PM window after external demands (college) end. The app's primary job is to intercept those transitions with a pre-programmed environment response.
+
+WHAT THE APP IS
+–	A state-aware daily execution engine
+–	A rule compliance tracker (4 core rules)
+–	An urge interruption protocol
+–	A failure containment and re-entry system
+–	A weekly self-calibration loop
+–	An identity reinforcement layer (execution count, not streaks)
+
+WHAT THE APP IS NOT
+–	Not a streak counter — streaks create shame on failure. Eliminated completely.
+–	Not a dopamine reward system — no badges, no confetti, no points.
+–	Not a notification spammer — the system is calm and firm.
+–	Not a mood tracker — only execution count matters.
+
+THE TWO LOOPS
+OLD LOOP  →  Fatigue → Bed → Screen → Relapse → Guilt → Night spike → Sleep late
+NEW LOOP  →  Fatigue → Movement → Business → Controlled reward → Sleep early → Stable morning
+ 
+2. STATE MODEL — HOW THE APP KNOWS WHAT TIME IT IS
+The app runs on a time-based state machine. At any moment, the user is in exactly ONE of five states. The app detects the current state based on time of day (and optionally location) and changes its UI, available actions, and active locks accordingly.
+
+State transitions are automatic. The user cannot manually switch states. The system controls the environment, not the user's mood.
+
+State	Time Window	Mode	Key Logic
+STATE 1	8:15 – 9:00 AM	Morning Activation	Boot sequence. App runs morning checklist. No social media available. User must complete 5 binary tasks before phone unlocks social.
+STATE 2	9:00 AM – 4:00 PM	External Demand	College / outside hours. Low app interference. Single global rule enforced: no adult content (blocked at network level). No heavy UI.
+STATE 3	4:00 – 5:00 PM	Vulnerable Transition	KEYSTONE STATE. Highest risk window. App triggers mandatory 6-step reset sequence the moment 4 PM hits. Social media hard-locked until all 6 steps are complete.
+STATE 4	5:00 – 9:45 PM	Controlled Output	Deep work + controlled reward window. Sub-states: 5:00–5:30 output tasks, 5:30–6:00 reward window (30-min timer), 6:00–7:30 buffer, 7:30–9:00 evening deep work, 9:00–9:45 wind-down.
+STATE 5	9:45 PM onward	Shutdown Protocol	Hard close. WiFi goes off. App enters night mode. Only shutdown checklist and journal visible. All other features locked.
+
+DEVELOPER NOTE — STATE DETECTION
+Primary trigger: device local time.
+Secondary trigger (Phase 2): GPS/location API — if user arrives home (saved home location) during college hours, State 3 triggers early.
+State is read-only from the user's perspective. App decides. User executes.
+ 
+3. DAILY EXECUTION ENGINE — BLOCK BY BLOCK
+Every day is divided into 7 blocks. Each block has a defined purpose, a checklist, and specific lock/unlock logic. Below is the complete spec for each block.
+Block 1 — Morning Activation  (8:15–9:00 AM)
+Purpose: Boot the user's physical and mental environment before any external input. This block prevents the most common failure point — staying in bed scrolling, which destroys the day's energy architecture before it starts.
+
+Trigger: 8:15 AM device time. App pushes a single silent vibration notification. No alarm sound, no urgent message. Just a firm nudge.
+
+Checklist — binary complete (done or not done, no partial):
+
+☐	Stand immediately	Must confirm standing — no bed scrolling
+☐	Drink water	Simple physical anchor
+☐	Face wash	Activates sensory system
+☐	Five pushups	Minimum physical activation
+☐	Sunlight exposure	Step outside or stand at window — 2 min minimum
+
+LOCK LOGIC — SOCIAL MEDIA
+Social media apps are hard-locked until this checklist is 5/5 complete. If user tries to open Instagram, Twitter, YouTube before completing the morning block → app intercepts, marks a RULE VIOLATION, and redirects to the morning checklist. No exceptions.
+
+Block 2 — College / External Demand  (9:00 AM – 4:00 PM)
+Purpose: Preserve cognitive resources during external obligation. The app does almost nothing here. No nagging, no timers, no check-ins.
+
+One global rule enforced continuously throughout this block:
+
+PERMANENT GLOBAL LOCK
+Adult content is blocked at the network/OS level. This is not toggled by any in-app action. It is always on. This is implemented via DNS-level filtering (e.g., NextDNS profile) or iOS Screen Time / Android parental controls configured at setup.
+
+The app is passive during this block. The only visible element is the state indicator in the corner. No action is required from the user until 4:00 PM.
+
+Block 3 — Vulnerable Transition / 4 PM Reset  (4:00–5:00 PM)
+KEYSTONE BLOCK
+This is the most important block in the entire system. The 4–7 PM window is when the old loop activates — fatigue + unstructured time + access to bed + phone = relapse. This block intercepts that window with a mandatory sequence before any reward is accessible.
+
+Trigger: Device time = 4:00 PM OR GPS = home location (if enabled). The moment this triggers, the app pushes a full-screen state change — the home screen shifts to the 4 PM Reset protocol. The user cannot dismiss it.
+
+The 6-step sequence is LOCKED ORDER. The user cannot skip steps or complete them out of order. Step 4 cannot be checked until Step 3 timer completes:
+
+1	Drink water	User taps confirm. No timer needed. Simple physical anchor to reset cortisol state.
+2	Snack	Confirm tap. Eating stabilizes blood sugar — a major hidden trigger for compulsive behavior.
+3	5-min walk	In-app countdown timer activates. User must step outside or pace. Cannot advance until 5:00 elapses.
+4	30 pushups / squats	User enters count (must be ≥ 30) and confirms. Physical output burns excess cortisol.
+5	Quick rinse	Confirm tap. Resetting the physical state (washing face/cold water on wrists) closes the college state.
+6	30-min Business Block	30-minute countdown timer. User must open their business/agency task. Timer must complete for social unlock.
+
+LOCK LOGIC — SOCIAL MEDIA AFTER 4 PM
+Social media remains LOCKED until all 6 steps are complete, including the full 30-minute business block timer.
+If any step is skipped → social stays locked for the rest of the day. No exceptions. No overrides.
+The app tracks "Business Block incomplete today" as a Rule Violation — separate from relapse events.
+
+Block 4 — Dual Track Output  (5:00–5:30 PM)
+Purpose: Daily minimum output in both tracks — Agency (business building) and Placement (career). These are tracked in minutes, not outcomes. The app does not care if the task was good. It cares that the minutes were logged.
+
+Daily minimums:
+
+☐	Agency — 30 min outbound or leverage task	Timer tracked. Cold outreach, content, product work.
+☐	Placement — 20 min prep	Applications, CV updates, research.
+☐	Workout — 20 pushups minimum	Can count toward 4 PM block if done together.
+☐	Reading — 15 min	Attention training. No audiobooks. Physical or ebook.
+☐	Focused work — 15 min	Single-task, no notifications. Separate from agency timer.
+
+Tracking method: The app tracks MINUTES logged per category per day. There is no weekly streak. The scoreboard shows only today's minutes and this week's total. Each day starts at zero.
+
+Block 5 — Controlled Reward Window  (5:30–6:00 PM)
+Purpose: Deliver dopamine in a controlled, bounded way. The user gets 30 minutes of social media. Exactly 30 minutes. No extension. No negotiation.
+
+Trigger: Block 3 (6-step sequence) complete AND timer reaches 5:30 PM.
+
+REWARD WINDOW LOGIC
+– 30-minute countdown timer starts automatically when window opens.
+– At 0:00, app pushes social apps back to locked state. Not a notification — a hard lock.
+– No extension button. No "5 more minutes." The timer ends, the lock activates.
+– No infinite scroll mode. If user attempts to extend past 6:00 → Rule Violation logged.
+
+If Block 3 was NOT completed: Reward window never opens. No social media for the day. The system does not offer a second chance on the same day.
+
+Block 6 — Evening Deep Work  (7:30–9:00 PM)
+Purpose: Structured focused output during the quietest cognitive window. No distractions, no high stimulation.
+
+Target: 60–90 minutes of focused work. App provides a work session timer. User selects task, starts timer. Timer runs in the background.
+
+ENVIRONMENT RULES DURING DEEP WORK
+– No social media (reward window already closed at 6:00 PM).
+– No video content (YouTube, Reels, etc.) — classified as high stimulation.
+– Music/ambient audio is permitted.
+– If user navigates away from deep work → app notes it. Not a violation, but tracked.
+
+Block 7 — Shutdown Protocol  (9:45 PM)
+Purpose: Hard-close the day. Prevent the most dangerous failure point — late-night bed scrolling that leads to the old loop.
+
+Trigger: 9:45 PM. App pushes a firm, quiet notification: "Shutdown now."
+
+☐	WiFi off	Manual action + app confirms (or device automation)
+☐	Anxiety journal — 10 min	3 prompts shown in-app. User writes. Reduces anxiety build-up.
+☐	Scoreboard log	User confirms today's execution count. Saves to history.
+☐	Devices away from bed	User confirms physical device placement
+
+After shutdown checklist is complete, app enters SLEEP MODE. The interface dims to a single static screen: a dark clock. No interactive elements. Nothing to tap. Nothing to scroll.
+
+JOURNAL PROMPTS (SHOWN IN-APP AT 9:45 PM)
+1.  What stressed me today?
+2.  What am I avoiding?
+3.  What is actually in my control tomorrow?
+ 
+4. RULE ENGINE — THE 4 CORE RULES
+These 4 rules are the structural skeleton of the system. Rule compliance is tracked SEPARATELY from relapse events. This distinction is critical. A relapse (behavioral failure) is not the same as a structural failure (breaking the environment conditions that enable relapse).
+
+CRITICAL DISTINCTION
+Relapse event  =  Data. Information. Not identity. Not failure.
+Rule violation  =  Structural failure. The environment that enables relapse was left open.
+
+#	Rule	Violation Type	What Happens
+1	No laptop on bed	Structural Failure	Logged as violation. User is prompted to move device. Next-day review flags it. Weekly stats show rule compliance %.
+2	No screens lying down	Structural Failure	Same as above. If user is detected using app while lying down (accelerometer, Phase 2 feature), auto-flag.
+3	WiFi off at 9:45 PM	Structural Failure	App checks connectivity at 9:50 PM. If WiFi still on → flags violation. Shutdown checklist cannot be marked complete.
+4	4 PM reset BEFORE any scroll	Structural Failure	If social app access attempted before Block 3 complete → immediate intercept, Rule Violation logged, redirect to 4 PM checklist.
+
+Rule compliance is displayed as a percentage in the weekly review. The target for Phase 1 is ≥ 80% rule compliance. This is the gate to Phase 2. Not relapse-free days — rule compliance days.
+ 
+5. URGE HANDLING MODULE
+The URGE button is always visible on the home screen — in every state, at every time of day. When tapped, it initiates a 5-step protocol designed around one core behavioral fact: urge waves last 8–15 minutes. If the user can physically and cognitively redirect for that window, the urge passes without action.
+
+The app's philosophy here is DELAY, not block. Blocking impulsively creates frustration and often backfires. Delaying with a structured physical sequence gives the wave time to pass naturally.
+
+DESIGN PRINCIPLE
+The Urge Protocol must feel like a tool, not a punishment. The UI is calm, firm, and matter-of-fact. No guilt language. No shame. Just: "Here is the next step. Execute it."
+
+URGE PROTOCOL — FULL SEQUENCE
+
+1	Stand up	User must tap CONFIRM. Cannot proceed until confirmed. Forces physical state change — getting off bed or couch is the first loop break.
+2	40 pushups	In-app countdown timer for estimated time. User confirms reps when done. Physical exertion metabolizes the cortisol/dopamine spike driving the urge.
+3	Cold water	Prompt: "Go to the tap. Drink a full glass. Splash face." User confirms. Sensory interruption resets physiological state.
+4	3-min breathing	App shows a 3-minute breathing guide (4 count in / 4 hold / 4 out). Timer enforced. Activates parasympathetic response.
+5	Redirect task	App shows the user's next scheduled task from today's block. One-tap to open it. Urge protocol closes automatically.
+
+After the protocol completes, the app asks two optional (but encouraged) questions:
+–	Did the urge pass?  Yes / No
+–	What triggered it?  (free text, one line)
+
+This data feeds the weekly calibration loop — identifying which times, states, and emotional precursors are most associated with urges. The user is never shown this data in a shaming way.
+
+IF THE URGE DOES NOT PASS AFTER THE PROTOCOL
+The app offers to run the protocol again from Step 1. It does not unlock access to blocked content. It does not offer an "override." The only options are: run again, or navigate away from the urge screen.
+ 
+6. FAILURE CONTAINMENT LOGIC
+A relapse event does not end the day. It does not reset any counter. It does not trigger shame. The system's response to a relapse is exactly the same as its response to any other disruption: structured re-entry into the schedule.
+
+THE NON-NEGOTIABLE RULE
+The app NEVER uses shame language. No "You failed." No "Streak broken." No red X on the calendar. The only frame is: "The system continues. Here is the next step."
+
+WHAT TRIGGERS FAILURE CONTAINMENT
+–	User manually taps "Log a relapse" (accessible from profile)
+–	User responds "No, urge did not pass" after Urge Protocol
+
+FAILURE CONTAINMENT — STEP BY STEP
+
+1	3 immediate actions	App shows: 10 pushups now → Write 3 lines (free text) → Resume schedule. Non-negotiable. User must confirm each one.
+2	Diagnostic questions	Three simple selectors — no judgment framing. (1) Environment rule broken? (2) What state? (3) What emotion preceded?
+3	Schedule re-entry	App displays the current time block and what the user should be doing right now. One-tap to open it.
+
+DIAGNOSTIC QUESTIONS (SHOWN AFTER RE-ENTRY ACTIONS)
+
+Question 1 — Did you break an environment rule?
+–	Laptop on bed
+–	Screens lying down
+–	WiFi still on past 9:45 PM
+–	Scrolled before 4 PM reset
+–	No rule broken
+
+Question 2 — What state were you in?
+–	Morning (pre-activation)
+–	4–7 PM vulnerable window
+–	Late night (post-shutdown)
+–	Other
+
+Question 3 — What emotion preceded it?
+–	Boredom
+–	Anxiety
+–	Loneliness
+–	Fatigue
+–	Frustration
+–	Other (free text)
+
+What happens to this data: It is stored and surfaced only in the Sunday weekly calibration, in a simple pattern: "Most relapses happened during [state] when feeling [emotion]. Most were preceded by [rule violation]." No daily shame metric. No calendar X's.
+ 
+7. WEEKLY CALIBRATION LOOP — SUNDAY REVIEW
+Every Sunday, the app enters a 15-minute calibration mode. This is the system's self-correction mechanism. The user reviews the past week's data and answers 4 questions. The system adjusts accordingly.
+
+The Sunday review is not optional — the app prompts it every Sunday morning (9 AM notification). The weekly data is always shown, whether the user opens it or not.
+
+METRICS DISPLAYED
+
+☐	Rule compliance %	4 rules × 7 days = 28 opportunities. % kept = compliance score.
+☐	Relapse incidents (count only)	No detail shown on main screen. Pattern shown separately.
+☐	Deep work hours (total)	Sum of all session timers logged during the week.
+☐	Agency output count (sessions)	Number of 30-min+ agency sessions completed.
+☐	Placement prep hours	Sum of all placement timers.
+☐	Sleep average (estimated)	Based on WiFi-off time vs next-day first-use time (proxy).
+
+THE 4 CALIBRATION QUESTIONS
+
+1.	What caused the most friction this week?
+2.	What felt most unstable?
+3.	What should increase next week?
+4.	What should decrease?
+
+User answers in free text. No word count minimum. One line is fine. The answers are stored and the user can view previous weeks' answers.
+
+PHASE GATE CHECK
+
+PHASE ADVANCEMENT LOGIC
+Phase 1 → Phase 2:  Rule compliance ≥ 80% sustained over 30 days.
+Phase 2 → Phase 3:  Rule compliance ≥ 80% AND deep work ≥ 7 hrs/week sustained over 30 days.
+Phase 2 unlocks:  Workout intensity increase, business block extends to 45 min.
+Phase 3 unlocks:  Content output expansion, schedule refinement tools.
+NO EXPANSION BEFORE PHASE 1 COMPLIANCE ≥ 80%.
+ 
+8. IDENTITY REINFORCEMENT LAYER
+The app's identity framework is built around one metric: execution count. Not feelings. Not productivity perception. Not streaks. How many of the 5 daily responsibilities were executed today.
+
+THE DAILY ENDING STATEMENT
+"You executed 4 out of 5 responsibilities today."
+NOT: "Great work!" NOT: "You were productive!" NOT: "Keep the streak alive!"
+
+This statement is shown at shutdown (9:45 PM) and saved to the identity log. Over time, the user sees a running record of execution counts — not streaks, not calendars. Just counts.
+
+The 5 responsibilities are:
+
+☐	Morning Activation block completed	All 5 morning items done
+☐	4 PM Reset block completed	All 6 steps in locked order
+☐	Output block completed	Both agency (30 min) and placement (20 min) logged
+☐	Evening deep work session	60+ minutes logged
+☐	Shutdown protocol completed	All 4 shutdown items done
+
+Why this works: Identity is not built by feeling motivated. It is built by having evidence that you are the kind of person who executes. This log becomes that evidence. Over 30 days, the user has a factual record, not a feeling.
+ 
+9. FULL APP FLOW — USER JOURNEY FROM WAKE TO SLEEP
+Below is the complete hour-by-hour flow of a day in the system. This is the developer's primary reference for building the time-based state machine.
+
+8:00 AM — APP WAKES SILENTLY
+–	Background process checks time. State = PRE-ACTIVATION.
+–	No notification yet. App is ready.
+
+8:15 AM — MORNING ACTIVATION TRIGGERS
+–	Silent vibration. App pushes to foreground if open.
+–	Home screen shows: STATE 1 — MORNING ACTIVATION.
+–	5-item checklist displayed. Social apps locked.
+–	User completes checklist → each item taps to confirm.
+–	At 5/5: state bar turns green. Social apps unlock briefly (for emergency use only — no reward window yet).
+
+9:00 AM — STATE 2: EXTERNAL DEMAND
+–	App enters passive mode. UI minimal.
+–	Only visible: current state, day counter, urge button.
+–	Global lock on adult content continues.
+–	No timers, no prompts, no interruptions.
+
+4:00 PM — STATE 3: VULNERABLE TRANSITION [CRITICAL]
+–	App pushes to foreground or sends firm notification.
+–	Full-screen state change: "4 PM RESET — BEGIN NOW."
+–	Social apps hard-locked regardless of morning performance.
+–	6-step sequence begins. Steps 1-2 are confirm-taps.
+–	Step 3: 5-minute walk timer starts. Cannot advance until complete.
+–	Steps 4-5: confirm-taps.
+–	Step 6: 30-minute business block timer. App stays on this screen. Social unlock only after timer hits zero.
+–	On completion: State bar turns green. Social reward window opens.
+
+5:30 PM — REWARD WINDOW OPENS
+–	30-minute countdown timer displayed prominently.
+–	Social apps accessible.
+–	Timer visible at top of every screen during this window.
+–	At 0:00: social apps re-lock. Timer disappears. No warning.
+
+6:00 PM — POST-REWARD TRANSITION
+–	Reward window closed.
+–	App shows output block tasks (agency, placement, workout, reading).
+–	User logs minutes as they complete tasks.
+–	No timers enforced — just tracking.
+
+7:30 PM — EVENING DEEP WORK PROMPT
+–	"Deep work window open. Start your session?" — simple prompt.
+–	User taps Start → session timer begins.
+–	At 60 min: "Minimum reached." User can continue or stop.
+–	At 90 min: session auto-closes.
+
+9:45 PM — SHUTDOWN PROTOCOL
+–	Firm notification: "Shutdown now."
+–	App enters shutdown mode — most features lock.
+–	4-item checklist shown.
+–	WiFi check at 9:50 PM.
+–	Journal prompts shown. User writes.
+–	Scoreboard: "You executed X/5 responsibilities today."
+–	App enters sleep mode. Dark static screen. Clock only.
+–	No interactive elements until 8:00 AM next day.
+ 
+10. SCREENS & COMPONENT INVENTORY
+Every screen the app needs to build. Organized by navigation tab and overlay.
+
+TAB 1 — TODAY (HOME)
+–	State bar — always visible, auto-updates every minute
+–	Day counter (Day 12 / Phase 1)
+–	Score strip: tasks done / violations today / compliance %
+–	Active block checklist (current block only)
+–	Progress bars: deep work minutes, reward window status
+–	URGE button — full width, always accessible
+
+TAB 2 — LOG (FULL SCHEDULE)
+–	All 7 daily blocks listed in order
+–	Expandable — tap any block to see its checklist
+–	Each item: confirm-tap, timer-tap, or text-input
+–	Locked items shown with padlock indicator
+–	Active item highlighted with amber border
+–	Completed items grey out with strikethrough
+
+TAB 3 — STATS (WEEKLY + PHASE)
+–	Metric grid: 6 stats in 2×3 layout
+–	Day-by-day rule compliance grid (7 × 4 matrix)
+–	Phase progress bar with gate indicator
+–	Sunday: calibration mode activates here — 4 questions shown
+–	Previous weeks accessible via back arrow
+
+TAB 4 — PROFILE
+–	Phase status + days remaining
+–	Identity log — last 14 days of execution counts
+–	System settings (notification times, location toggle)
+–	Relapse log button — opens failure containment flow
+–	App version / reset option
+
+OVERLAY 1 — URGE PROTOCOL
+–	Full-screen takeover (cannot be dismissed by back swipe)
+–	Large countdown timer at top
+–	5-step sequence, current step highlighted in red
+–	Steps 1-5 each require a confirm action before advancing
+–	Breathing guide on Step 4 (animated circle)
+–	After Step 5: redirect to scheduled task. Protocol closes.
+
+OVERLAY 2 — FAILURE CONTAINMENT
+–	Triggered by: "Log relapse" button or urge protocol negative answer
+–	Cannot be closed without completing Step 1 (3 immediate actions)
+–	Diagnostic selectors (not text — tap-to-select)
+–	Re-entry button: shows current block, one-tap to open it
+–	Ends with static statement: "No streak reset. No shame. Just re-entry."
+
+SLEEP MODE SCREEN
+–	Activates after shutdown checklist complete
+–	Dark background, single clock (analog or digital)
+–	No buttons, no menus, no notifications
+–	Deactivates at 8:00 AM
+ 
+11. DEVELOPER IMPLEMENTATION NOTES
+
+APP BLOCKING — HOW IT WORKS
+Two approaches depending on platform:
+–	iOS: Screen Time API (ScreenTimekit / DeviceActivityReport). App uses DEActivitySchedule to enforce blocks. Requires Family Sharing setup or MDM profile — inform user at onboarding.
+–	Android: UsageStatsManager + AppOpsManager. App monitors foreground usage and overlays a block screen when disallowed apps are accessed.
+–	Cross-platform fallback: DNS-based filtering (NextDNS custom profile). Less precise but covers network-level blocking including browser-based access.
+
+TIMER LOGIC
+–	All timers run in background (iOS: BGTaskScheduler / Android: WorkManager).
+–	Timers survive app close. If user closes app during a timer, timer continues.
+–	On app reopen mid-timer: timer state is restored, countdown continues.
+–	Timers cannot be paused by user. Can only be canceled (which logs a violation).
+
+STATE DETECTION
+–	Primary: device local time, checked every minute in background.
+–	Secondary (Phase 2): CoreLocation (iOS) / LocationManager (Android) for home detection.
+–	State changes do NOT require the app to be open. Background service handles it.
+–	Push notification sent on every state change (silent for State 2; firm for States 3, 5).
+
+DATA STORAGE
+–	All data stored locally (SQLite or Realm). No account required in Phase 1.
+–	Tables: daily_logs, rule_violations, urge_events, relapse_events, weekly_reviews, identity_log.
+–	No data sent to server in Phase 1. Optional cloud sync in Phase 2.
+–	Local backup via device iCloud / Google Drive backup.
+
+WHAT THE APP MUST NOT DO
+HARD RESTRICTIONS (NEVER BUILD THESE)
+– No streak counters of any kind. Not even hidden ones.
+– No achievement badges, confetti, or reward animations on task completion.
+– No push notifications with guilt language ("You missed your goal!").
+– No social comparison, leaderboards, or sharing features.
+– No "override" button on any lock. No exceptions. No escape hatches.
+– No data that frames relapse count as identity (e.g., "You have relapsed 3 times this week").
+
+FINAL NOTE
+This is a regulation tool, not a hype app.
+Every design and engineering decision should be asked through this filter: "Does this help the user regulate, or does it entertain them?" If it entertains, it does not ship.
+

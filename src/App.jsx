@@ -12,14 +12,15 @@ import ProfileView from './components/views/ProfileView'
 import RecoveryOverlay from './components/views/RecoveryOverlay'
 import SettingsView from './components/views/SettingsView'
 import SleepView from './components/views/SleepView'
-import StatsView from './components/views/StatsView'
 import UrgeOverlay from './components/views/UrgeOverlay'
+import { useNotifications } from './hooks/useNotifications'
 import { useSyncEngine } from './hooks/useSyncEngine'
+import { db } from './lib/db'
 import { useAppStore } from './store/useAppStore'
 import { useAuthStore } from './store/useAuthStore'
 
 /**
- * @intent Root application orchestrator with auth gating, sync, onboarding
+ * @intent Root application orchestrator with auth gating, offline-first sync, onboarding
  * @param None
  */
 export default function App() {
@@ -37,92 +38,107 @@ export default function App() {
     const isSleepMode = useAppStore(state => state.isSleepMode)
 
     const { syncAll } = useSyncEngine()
+    const { scheduleStateNotifications } = useNotifications()
+
+    // synced = local data is ready to render (either from cache or fresh sync)
     const [synced, setSynced] = useState(false)
-    const [syncLog, setSyncLog] = useState('Initiating sync process...')
     const syncStarted = useRef(false)
 
     // Initialize auth listener on mount
     useEffect(() => { init() }, [init])
 
-    // Sync Supabase → Dexie after login + onboarding confirmed
+    // Offline-first sync logic
     useEffect(() => {
-        if (user && isOnboarded && !synced && !syncStarted.current) {
-            syncStarted.current = true
-            setSyncLog('Pulling Supabase data...')
-            
-            // Start sync
-            const syncPromise = syncAll()
-            
-            // Hard 5-second fallback: Guarantee we never lock the user out
-            const fallbackTimeout = setTimeout(() => {
-                setSyncLog('Sync timed out. Force entering app...')
-                setSynced(true)
-            }, 5000)
+        if (!user || !isOnboarded || syncStarted.current) return
+        syncStarted.current = true
 
-            syncPromise
-                .then(() => {
+        const runSync = async () => {
+            // --- OFFLINE-FIRST: Check if we already have local data ---
+            const localBlockCount = await db.time_blocks.count()
+            const lastSynced = await db.user_preferences.get('last_synced')
+
+            if (localBlockCount > 0 && lastSynced?.value) {
+                // We have cached data — enter the app immediately
+                setSynced(true)
+
+                // Then sync in background silently (no loading screen)
+                syncAll()
+                    .then(async () => {
+                        await db.user_preferences.put({ key: 'last_synced', value: new Date().toISOString() })
+                        const blocks = await db.time_blocks.toArray()
+                        scheduleStateNotifications(blocks).catch(() => {})
+                    })
+                    .catch(err => console.warn('[App] Background sync failed (offline?):', err))
+
+                return
+            }
+
+            // --- FIRST LOGIN: Must sync before entering ---
+            const fallbackTimeout = setTimeout(() => {
+                console.warn('[App] Sync timed out — entering with whatever data is available')
+                setSynced(true)
+            }, 6000)
+
+            syncAll()
+                .then(async () => {
                     clearTimeout(fallbackTimeout)
-                    setSyncLog('Sync complete.')
+                    await db.user_preferences.put({ key: 'last_synced', value: new Date().toISOString() })
+                    const blocks = await db.time_blocks.toArray()
+                    scheduleStateNotifications(blocks).catch(() => {})
                     setSynced(true)
                 })
                 .catch(err => {
                     clearTimeout(fallbackTimeout)
-                    console.error("Sync caught error:", err)
-                    setSyncLog('Sync errored. Continuing...')
+                    console.error('[App] Initial sync error:', err)
                     setSynced(true)
                 })
         }
-    }, [user, isOnboarded, synced, syncAll])
 
-    // Reset sync flag on logout
+        runSync()
+    }, [user, isOnboarded])
+
+    // Reset sync flag on logout so next login re-syncs
     useEffect(() => {
         if (!user) {
             setSynced(false)
             syncStarted.current = false
-            setSyncLog('Initiating sync process...')
         }
     }, [user])
 
-    // Loading state
+    // --- RENDER GATES ---
+
     if (authLoading) {
         return (
             <PhoneFrame>
                 <div className="flex-1 flex items-center justify-center">
                     <div className="font-mono text-[10px] text-text3 tracking-[3px] uppercase animate-pulse">
-                        INITIALIZING SYSTEM...
+                        INITIALIZING...
                     </div>
                 </div>
             </PhoneFrame>
         )
     }
 
-    // Not logged in → Auth gate
-    if (!user) {
-        return <AuthView />
-    }
+    if (!user) return <AuthView />
 
-    // Logged in but not onboarded → Onboarding
-    if (!isOnboarded) {
-        return <OnboardingView />
-    }
+    if (!isOnboarded) return <OnboardingView />
 
-    // Waiting for initial cloud → local sync
+    // Only show sync screen on first-ever login (no local cache)
     if (!synced) {
         return (
             <PhoneFrame>
                 <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6">
                     <div className="font-mono text-[10px] text-amber tracking-[3px] uppercase animate-pulse text-center">
-                        SYNCING CLOUD DATA...
+                        SYNCING SYSTEM DATA...
                     </div>
-                    <div className="font-mono text-[8px] text-text3 tracking-[1px] uppercase text-center opacity-70">
-                        {syncLog}
+                    <div className="font-mono text-[8px] text-text3 tracking-[1px] text-center opacity-60">
+                        First-time setup. This only happens once.
                     </div>
                 </div>
             </PhoneFrame>
         )
     }
 
-    // Force Sleep View over everything if time block has is_sleep
     if (isSleepMode) {
         return (
             <PhoneFrame>
@@ -136,18 +152,14 @@ export default function App() {
         <PhoneFrame>
             <TimeEngine />
 
-            {/* First-time guide overlay */}
             {profile && !profile.has_seen_guide && <GuideOverlay />}
 
-            {/* Active View Routing */}
             {currentTab === 'today' && <HomeView />}
             {currentTab === 'log' && <LogView />}
-            {currentTab === 'stats' && <StatsView />}
             {currentTab === 'closure' && <ClosureView />}
             {currentTab === 'profile' && <ProfileView />}
             {currentTab === 'settings' && <SettingsView />}
 
-            {/* Screen Overlays */}
             {isUrgeActive && <UrgeOverlay />}
             {isFailureActive && <FailureOverlay />}
             {isRecoveryActive && <RecoveryOverlay onClose={() => setRecoveryActive(false)} />}

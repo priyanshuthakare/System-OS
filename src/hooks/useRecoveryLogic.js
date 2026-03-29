@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../lib/db'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/useAuthStore'
 
-const RECOVERY_ACTIONS = [
+const DEFAULT_RECOVERY_ACTIONS = [
     '10 pushups',
     'Drink a full glass of water',
     'Walk for 2 minutes',
@@ -11,7 +13,8 @@ const RECOVERY_ACTIONS = [
 ]
 
 /**
- * @intent Manages the Recovery Engine (System 4) — logs failures and forces a 20-second physical recovery
+ * @intent Manages the Recovery Engine (System 4) — logs failures and forces a 20-second physical recovery.
+ * Recovery actions are pulled dynamically from user preferences.
  * @param {string} activeStateId - The current state id when relapse occurred
  */
 export function useRecoveryLogic(activeStateId) {
@@ -21,6 +24,10 @@ export function useRecoveryLogic(activeStateId) {
     const [action, setAction] = useState(null)
     const [saving, setSaving] = useState(false)
     const [startTime] = useState(() => Date.now())
+
+    // Dynamic recovery actions from Dexie preferences
+    const actionsPref = useLiveQuery(() => db.user_preferences.get('recovery_actions'))
+    const RECOVERY_ACTIONS = actionsPref ? JSON.parse(actionsPref.value) : DEFAULT_RECOVERY_ACTIONS
 
     const submit = async (onDone) => {
         if (!user || !action) return

@@ -1,15 +1,17 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Lock } from 'lucide-react'
 import { useChecklist } from '../../hooks/useChecklist'
 import { useLockEngine } from '../../hooks/useLockEngine'
-import { db, getOrCreateDay } from '../../lib/db'
+import { useTierGuard } from '../../hooks/useTierGuard'
+import { db, getOrCreateDay, incrementActiveDayIfNeeded } from '../../lib/db'
 import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 import CheckboxItem from '../ui/CheckboxItem'
 import ChecklistCard from '../ui/ChecklistCard'
 import DeepWorkTracker from '../ui/DeepWorkTracker'
 import ProgressBar from '../ui/ProgressBar'
+import ProUpgradeModal from '../ui/ProUpgradeModal'
 import UrgeButton from '../ui/UrgeButton'
 
 const CATEGORY_LABELS = {
@@ -30,11 +32,20 @@ export default function HomeView() {
     const currentTimeStr = useAppStore(state => state.currentTimeStr)
     const isRewardWindowOpen = useAppStore(state => state.isRewardWindowOpen)
     const uiColor = useAppStore(state => state.uiColor)
+    const { canAccessUrgeEngine } = useTierGuard()
+    const [showUpgrade, setShowUpgrade] = useState(false)
 
+    const setDeepWorkMinutes = useAppStore(state => state.setDeepWorkMinutes)
     const todayNum = new Date().toISOString().split('T')[0]
 
     useEffect(() => {
-        getOrCreateDay(todayNum)
+        getOrCreateDay(todayNum).then(day => {
+            if (day?.deep_work_minutes) {
+                setDeepWorkMinutes(day.deep_work_minutes)
+            }
+        })
+        // Increment active days counter (once per calendar day)
+        incrementActiveDayIfNeeded(todayNum)
     }, [todayNum])
 
     const { items, loading, toggleItem } = useChecklist(todayNum, currentBlockId)
@@ -50,12 +61,9 @@ export default function HomeView() {
     let dayNumber = 1
     let phaseName = 'Phase 1 • Stability'
 
+    // Use active_days (behavioral counter) not wall-clock date diff
     if (profData) {
-        const startObj = new Date(profData.start_date)
-        const todayObj = new Date(todayNum)
-        const diffTime = Math.abs(todayObj - startObj)
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-        dayNumber = diffDays + 1
+        dayNumber = profData.active_days || 1
     }
 
     if (phaseData) {
@@ -185,8 +193,16 @@ export default function HomeView() {
                     className="mb-4"
                 />
 
-                <UrgeButton onClick={() => setUrgeActive(true)} />
+                <UrgeButton onClick={() => {
+                    if (!canAccessUrgeEngine()) {
+                        setShowUpgrade(true)
+                        return
+                    }
+                    setUrgeActive(true)
+                }} />
             </div>
+
+            {showUpgrade && <ProUpgradeModal onClose={() => setShowUpgrade(false)} />}
         </div>
     )
 }
