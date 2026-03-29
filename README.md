@@ -4,6 +4,10 @@
 
 **A behavioral regulation operating system that replaces chaos with stability**
 
+<p align="center">
+  <img src="src/public/promotional-banner.png" width="600"/>
+</p>
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![React](https://img.shields.io/badge/React-18.3-blue.svg)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.0-purple.svg)](https://vitejs.dev/)
