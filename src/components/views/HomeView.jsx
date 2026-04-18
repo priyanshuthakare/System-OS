@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Lock } from 'lucide-react'
 import { useChecklist } from '../../hooks/useChecklist'
 import { useLockEngine } from '../../hooks/useLockEngine'
+import { useNeuralHeatmap } from '../../hooks/useNeuralHeatmap'
 import { useTierGuard } from '../../hooks/useTierGuard'
 import { db, getOrCreateDay, incrementActiveDayIfNeeded } from '../../lib/db'
 import { cn } from '../../lib/utils'
@@ -10,6 +11,7 @@ import { useAppStore } from '../../store/useAppStore'
 import CheckboxItem from '../ui/CheckboxItem'
 import ChecklistCard from '../ui/ChecklistCard'
 import DeepWorkTracker from '../ui/DeepWorkTracker'
+import NeuralImpactMap from '../ui/NeuralImpactMap'
 import ProgressBar from '../ui/ProgressBar'
 import ProUpgradeModal from '../ui/ProUpgradeModal'
 import UrgeButton from '../ui/UrgeButton'
@@ -38,19 +40,17 @@ export default function HomeView() {
     const setDeepWorkMinutes = useAppStore(state => state.setDeepWorkMinutes)
     const todayNum = new Date().toISOString().split('T')[0]
 
+    // Restore deep work value from local Dexie
     useEffect(() => {
         getOrCreateDay(todayNum).then(day => {
-            if (day?.deep_work_minutes) {
-                setDeepWorkMinutes(day.deep_work_minutes)
-            }
+            if (day?.deep_work_minutes) setDeepWorkMinutes(day.deep_work_minutes)
         })
-        // Increment active days counter (once per calendar day)
-        incrementActiveDayIfNeeded(todayNum)
     }, [todayNum])
 
     const { items, loading, toggleItem } = useChecklist(todayNum, currentBlockId)
     const hasIncompleteItems = items.some(i => !i.isDone)
     useLockEngine(hasIncompleteItems)
+    const categoryProgress = useNeuralHeatmap(items)
 
     const dayData = useLiveQuery(() => db.days.get(todayNum), [todayNum])
     const dayMetrics = dayData || { tasks_completed: 0, violations: 0, compliance_score: 100 }
@@ -58,17 +58,31 @@ export default function HomeView() {
     const profData = useLiveQuery(() => db.profiles.toCollection().first())
     const phaseData = useLiveQuery(() => profData ? db.phases.get(profData.phase_id) : undefined, [profData])
 
-    let dayNumber = 1
-    let phaseName = 'Phase 1 • Stability'
+    // ── Day streak: consecutive calendar days with at least one completion
+    // Does NOT rely on a profile record — computed purely from checklist_completions.
+    // Rule: yesterday must have activity to extend streak; today is +1 (ongoing).
+    // If yesterday had 0 activity → streak resets to 1.
+    const dayNumber = useLiveQuery(async () => {
+        const all = await db.checklist_completions.toArray()
+        const datesWithActivity = new Set(all.map(c => c.date))
 
-    // Use active_days (behavioral counter) not wall-clock date diff
-    if (profData) {
-        dayNumber = profData.active_days || 1
-    }
+        let streak = 1 // today always counts as at least day 1 (ongoing)
+        const cursor = new Date()
+        cursor.setDate(cursor.getDate() - 1) // start from yesterday
 
-    if (phaseData) {
-        phaseName = phaseData.name.replace('-', '•')
-    }
+        while (true) {
+            const ds = cursor.toISOString().split('T')[0]
+            if (datesWithActivity.has(ds)) {
+                streak++
+                cursor.setDate(cursor.getDate() - 1)
+            } else {
+                break // gap in streak — stop counting
+            }
+        }
+        return streak
+    }, []) ?? 1
+
+    const phaseName = phaseData ? phaseData.name.replace('-', '•') : 'Phase 1 • Stability'
 
     const itemsDone = items.filter(i => i.isDone).length
     const totalItems = items.length
@@ -135,6 +149,9 @@ export default function HomeView() {
                         </div>
                     </div>
                 </div>
+
+                {/* Neural Impact Map */}
+                <NeuralImpactMap categoryProgress={categoryProgress} />
 
                 {/* Active Block Header */}
                 <div className="flex items-center justify-between mb-3">

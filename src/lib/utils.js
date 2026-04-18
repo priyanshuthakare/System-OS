@@ -66,6 +66,7 @@ export async function syncDailyProgress(dateString) {
         })
 
         // 8. Upsert to Supabase (preserving daily_reflection and recovery_count)
+        // .maybeSingle() is used instead of .single() — returns null (not 406) when no row exists yet
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
             const { data: remoteDay } = await supabase
@@ -73,14 +74,20 @@ export async function syncDailyProgress(dateString) {
                 .select('id, recovery_count, daily_reflection')
                 .eq('user_id', session.user.id)
                 .eq('date', dateString)
-                .single()
+                .maybeSingle()
+
+            // Column mapping matches actual Supabase days schema:
+            // execution_pct (not compliance_score), structural_violations (not violations)
+            const executionPct = totalStates > 0
+                ? Math.max(0, Math.round((statesExecuted / totalStates) * 100 - (violationsCount * 5)))
+                : 100
 
             const payload = {
                 user_id: session.user.id,
                 date: dateString,
                 states_executed: statesExecuted,
                 structural_violations: violationsCount,
-                compliance_score: complianceScore,
+                execution_pct: executionPct,
                 recovery_count: remoteDay?.recovery_count || 0,
                 daily_reflection: remoteDay?.daily_reflection || null
             }
