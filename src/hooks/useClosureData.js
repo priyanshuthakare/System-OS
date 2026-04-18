@@ -3,6 +3,11 @@ import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/useAuthStore'
 import { db } from '../lib/db'
 
+/** Map a raw days record (local or remote) to the reflections shape */
+function toReflection(d) {
+    return { date: d.date, text: d.daily_reflection }
+}
+
 /**
  * @intent Fetches past 7 daily reflections — local Dexie first (offline), Supabase as background refresh.
  * Uses a hasFetched ref to prevent re-fire loops from parent re-renders.
@@ -41,7 +46,7 @@ export function useClosureData() {
                     .filter(d => d.daily_reflection?.trim())
                     .sort((a, b) => b.date.localeCompare(a.date))
                     .slice(0, 7)
-                    .map(d => ({ date: d.date, text: d.daily_reflection }))
+                    .map(toReflection)
 
                 if (localReflections.length > 0) {
                     setReflections(localReflections)
@@ -69,7 +74,7 @@ export function useClosureData() {
 
                 const remoteReflections = (data || [])
                     .filter(d => d.daily_reflection?.trim())
-                    .map(d => ({ date: d.date, text: d.daily_reflection }))
+                    .map(toReflection)
 
                 setReflections(remoteReflections)
 

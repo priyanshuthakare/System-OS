@@ -241,6 +241,8 @@ export function useSyncEngine() {
             } else if (recentDays?.length) {
                 for (const day of recentDays) {
                     const localDay = await db.days.get(day.date)
+                    // Preserve locally-tracked task/violation counts (kept up-to-date by syncDailyProgress
+                    // in utils.js) and only fall back to Supabase values when no local record exists yet.
                     await db.days.put({
                         date: day.date,
                         tasks_completed: localDay?.tasks_completed ?? (day.states_executed || 0),
