@@ -1,4 +1,7 @@
 .env.local
 dist
+package-lock.json
+package.json
 blueprinttomarket.txt
 node_modules
+
