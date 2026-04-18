@@ -7,17 +7,29 @@ import { cn } from '../../lib/utils'
 const DEV_UV_DEBUG = false
 
 const UV_REGIONS = {
-    physical: {
-        blobs: [{ u: 0.50, v: 0.28 }],
-        label: 'PHYSICAL',
+    motorCortex: {
+        blobs: [{ u: 0.50, v: 0.30 }],
+        label: 'MOTOR CORTEX',
     },
-    grounding: {
-        blobs: [{ u: 0.50, v: 0.70 }],
-        label: 'GROUNDING',
+    prefrontal: {
+        blobs: [{ u: 0.50, v: 0.14 }],
+        label: 'PREFRONTAL',
     },
-    target: {
-        blobs: [{ u: 0.22, v: 0.50 }, { u: 0.78, v: 0.50 }],
-        label: 'TARGET',
+    limbic: {
+        blobs: [{ u: 0.50, v: 0.58 }],
+        label: 'LIMBIC',
+    },
+    cerebellum: {
+        blobs: [{ u: 0.50, v: 0.82 }],
+        label: 'CEREBELLUM',
+    },
+    tempora: {
+        blobs: [{ u: 0.18, v: 0.48 }, { u: 0.82, v: 0.48 }],
+        label: 'TEMPORA',
+    },
+    amygdala: {
+        blobs: [{ u: 0.32, v: 0.62 }, { u: 0.68, v: 0.62 }],
+        label: 'AMYGDALA',
     },
 }
 
@@ -68,7 +80,7 @@ function paintDebugGrid(ctx) {
 /**
  * @intent Repaints the emissive mask: black base + faint ghost rings + active blobs.
  * @param {CanvasRenderingContext2D} ctx
- * @param {{ physical: number, grounding: number, target: number }} progress
+ * @param {{ motorCortex: number, prefrontal: number, limbic: number, cerebellum: number, tempora: number, amygdala: number }} progress
  */
 function repaintEmissive(ctx, progress) {
     ctx.fillStyle = '#000000'
@@ -99,9 +111,9 @@ function repaintEmissive(ctx, progress) {
  * @intent Neural Impact Map — matte white brain with orange-red emissive activation zones.
  *         Architecture: emissiveMap canvas masks WHERE the emissive shows on the mesh.
  *         animId is stored on stateRef every frame so cleanup reliably cancels it.
- * @param {{ physical: number, grounding: number, target: number }} categoryProgress
+ * @param {{ motorCortex: number, prefrontal: number, limbic: number, cerebellum: number, tempora: number, amygdala: number }} regionProgress
  */
-export default function NeuralImpactMap({ categoryProgress }) {
+export default function NeuralImpactMap({ regionProgress }) {
     const mountRef   = useRef(null)
     const stateRef   = useRef({})
     const [loaded, setLoaded] = useState(false)
@@ -233,9 +245,9 @@ export default function NeuralImpactMap({ categoryProgress }) {
     useEffect(() => {
         const { emissiveCtx, emissiveTexture } = stateRef.current
         if (!emissiveCtx || !emissiveTexture) return
-        repaintEmissive(emissiveCtx, categoryProgress)
+        repaintEmissive(emissiveCtx, regionProgress)
         emissiveTexture.needsUpdate = true
-    }, [categoryProgress])
+    }, [regionProgress])
 
     return (
         <div className="mb-7">
@@ -272,12 +284,12 @@ export default function NeuralImpactMap({ categoryProgress }) {
 
             {/* Legend — dot color matches emissive orange-red */}
             <div className="flex items-center justify-between mt-2 px-1">
-                {Object.entries(UV_REGIONS).map(([cat, region]) => {
-                    const progress = categoryProgress[cat] || 0
+                {Object.entries(UV_REGIONS).map(([region, cfg]) => {
+                    const progress = regionProgress?.[region] ?? 0
                     const isActive = progress > 0
                     const dotColor = isActive ? '#ff4400' : '#ff440033'
                     return (
-                        <div key={cat} className="flex items-center gap-[6px]">
+                        <div key={region} className="flex items-center gap-[6px]">
                             <div
                                 className="w-[6px] h-[6px] rounded-full transition-all duration-700"
                                 style={{
@@ -289,7 +301,7 @@ export default function NeuralImpactMap({ categoryProgress }) {
                                 "font-mono text-[7px] tracking-[1.5px] uppercase transition-colors duration-700",
                                 isActive ? "text-white" : "text-text3"
                             )}>
-                                {region.label}
+                                {cfg.label}
                             </span>
                             <span className={cn(
                                 "font-mono text-[7px] tracking-[1px] transition-colors duration-700",

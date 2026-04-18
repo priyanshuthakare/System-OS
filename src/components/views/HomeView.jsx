@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Lock } from 'lucide-react'
 import { useChecklist } from '../../hooks/useChecklist'
 import { useLockEngine } from '../../hooks/useLockEngine'
-import { useNeuralHeatmap } from '../../hooks/useNeuralHeatmap'
+import { useBrainRegionHeatmap } from '../../hooks/useBrainRegionHeatmap'
 import { useTierGuard } from '../../hooks/useTierGuard'
 import { db, getOrCreateDay, incrementActiveDayIfNeeded } from '../../lib/db'
 import { cn } from '../../lib/utils'
@@ -50,10 +50,11 @@ export default function HomeView() {
     const { items, loading, toggleItem } = useChecklist(todayNum, currentBlockId)
     const hasIncompleteItems = items.some(i => !i.isDone)
     useLockEngine(hasIncompleteItems)
-    const categoryProgress = useNeuralHeatmap(items)
 
     const dayData = useLiveQuery(() => db.days.get(todayNum), [todayNum])
     const dayMetrics = dayData || { tasks_completed: 0, violations: 0, compliance_score: 100 }
+
+    const regionProgress = useBrainRegionHeatmap(items, dayMetrics)
 
     const profData = useLiveQuery(() => db.profiles.toCollection().first())
     const phaseData = useLiveQuery(() => profData ? db.phases.get(profData.phase_id) : undefined, [profData])
@@ -151,7 +152,7 @@ export default function HomeView() {
                 </div>
 
                 {/* Neural Impact Map */}
-                <NeuralImpactMap categoryProgress={categoryProgress} />
+                <NeuralImpactMap regionProgress={regionProgress} />
 
                 {/* Active Block Header */}
                 <div className="flex items-center justify-between mb-3">
