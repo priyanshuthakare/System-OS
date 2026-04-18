@@ -74,37 +74,41 @@ export default function FailureOverlay() {
     const handleReentry = async () => {
         setLogging(true)
 
-        // Save failure event to Dexie
-        const now = new Date()
-        await db.failure_events.add({
-            date: today,
-            time: now.toTimeString().split(' ')[0],
-            rule_broken_id: rule,
-            state_id: statePhase,
-            prior_emotion: emotion,
-            action_taken: true
-        })
-
-        // Increment the day's violation count and re-sync compliance
-        if (rule !== 'None') {
-            await db.rule_violations.add({
-                rule_id: rule,
+        try {
+            // Save failure event to Dexie
+            const now = new Date()
+            await db.failure_events.add({
                 date: today,
-                time: now.toTimeString().split(' ')[0]
+                time: now.toTimeString().split(' ')[0],
+                rule_broken_id: rule,
+                state_id: statePhase,
+                prior_emotion: emotion,
+                action_taken: true
             })
 
-            // FIX: Actually increment violations on the day record
-            const day = await getOrCreateDay(today)
-            await db.days.update(today, {
-                violations: (day.violations || 0) + 1
-            })
+            // Increment the day's violation count and re-sync compliance
+            if (rule !== 'None') {
+                await db.rule_violations.add({
+                    rule_id: rule,
+                    date: today,
+                    time: now.toTimeString().split(' ')[0]
+                })
 
-            // Re-calculate compliance with updated violation count
-            await syncDailyProgress(today)
+                // FIX: Actually increment violations on the day record
+                const day = await getOrCreateDay(today)
+                await db.days.update(today, {
+                    violations: (day.violations || 0) + 1
+                })
+
+                // Re-calculate compliance with updated violation count
+                await syncDailyProgress(today)
+            }
+        } catch (e) {
+            console.error('Failure reentry error:', e)
+        } finally {
+            setLogging(false)
+            setFailureActive(false)
         }
-
-        setLogging(false)
-        setFailureActive(false)
     }
 
     return (
