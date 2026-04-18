@@ -28,6 +28,33 @@ export default function ClosureView() {
 
     const loadDayData = useCallback(async () => {
         if (!userId) return
+
+        // 1. Offline-first: serve local Dexie data immediately
+        let localDay = null
+        let localBlockCount = 0
+        try {
+            localDay = await db.days.get(today)
+            localBlockCount = await db.time_blocks.count()
+        } catch (e) {
+            console.warn('[ClosureView] Local DB read failed:', e)
+        }
+
+        if (localDay) {
+            setDayData({
+                states_executed: localDay.tasks_completed || 0,
+                structural_violations: localDay.violations || 0,
+                recovery_count: localDay.recovery_count || 0,
+                deep_work_minutes: localDay.deep_work_minutes || 0
+            })
+            setTotalStates(localBlockCount || 1)
+            if (localDay.daily_reflection) {
+                setReflection(localDay.daily_reflection)
+                setSaved(true)
+            }
+            setLoading(false)
+        }
+
+        // 2. Background refresh from Supabase (updates UI silently when online)
         try {
             const { data: day, error: dayErr } = await supabase
                 .from('days')
@@ -36,26 +63,42 @@ export default function ClosureView() {
                 .eq('date', today)
                 .maybeSingle()
 
-            if (dayErr) console.warn('Supabase days fetch issue:', dayErr)
+            if (dayErr) throw dayErr
 
             const { count, error: countErr } = await supabase
                 .from('states')
                 .select('*', { count: 'exact', head: true })
                 .eq('user_id', userId)
 
-            if (countErr) console.warn('Supabase count issue:', countErr)
+            if (countErr) console.warn('[ClosureView] State count issue:', countErr)
 
             setDayData(day || { states_executed: 0, structural_violations: 0, recovery_count: 0, deep_work_minutes: 0 })
-            setTotalStates(count || 1)
+            setTotalStates(count || localBlockCount || 1)
 
             if (day?.daily_reflection) {
                 setReflection(day.daily_reflection)
                 setSaved(true)
             }
+
+            // Cache Supabase data to local Dexie for next offline load
+            if (day) {
+                await db.days.put({
+                    date: today,
+                    tasks_completed: localDay?.tasks_completed ?? (day.states_executed || 0),
+                    violations: localDay?.violations ?? (day.structural_violations || 0),
+                    deep_work_minutes: day.deep_work_minutes || localDay?.deep_work_minutes || 0,
+                    compliance_score: localDay?.compliance_score || 0,
+                    recovery_count: day.recovery_count || 0,
+                    daily_reflection: day.daily_reflection || null
+                })
+            }
         } catch (e) {
-            console.error('Failed to load day data:', e)
-            setDayData({ states_executed: 0, structural_violations: 0, recovery_count: 0, deep_work_minutes: 0 })
-            setTotalStates(1)
+            if (!localDay) {
+                // No local data and Supabase unreachable — show empty defaults
+                setDayData({ states_executed: 0, structural_violations: 0, recovery_count: 0, deep_work_minutes: 0 })
+                setTotalStates(localBlockCount || 1)
+            }
+            console.warn('[ClosureView] Supabase fetch failed (offline?):', e.message || e)
         } finally {
             setLoading(false)
         }
@@ -76,7 +119,7 @@ export default function ClosureView() {
         if (!userId) {
             hasFetched.current = false
             setDayData(null)
-            setLoading(true)
+            setLoading(false)
         }
     }, [userId])
 
@@ -84,6 +127,28 @@ export default function ClosureView() {
     const saveReflection = async () => {
         if (!user || !reflection.trim()) return
 
+        // 1. Persist to local Dexie immediately (works offline)
+        try {
+            const existingLocal = await db.days.get(today)
+            if (existingLocal) {
+                await db.days.update(today, { daily_reflection: reflection.trim() })
+            } else {
+                await db.days.put({
+                    date: today,
+                    tasks_completed: 0,
+                    violations: 0,
+                    deep_work_minutes: 0,
+                    compliance_score: 0,
+                    recovery_count: 0,
+                    daily_reflection: reflection.trim()
+                })
+            }
+            setSaved(true)
+        } catch (e) {
+            console.warn('[ClosureView] Local reflection save failed:', e)
+        }
+
+        // 2. Sync to Supabase in background
         try {
             const { data: existing } = await supabase
                 .from('days')
@@ -103,9 +168,8 @@ export default function ClosureView() {
                     daily_reflection: reflection.trim()
                 })
             }
-            setSaved(true)
         } catch (e) {
-            console.error('Failed to save reflection:', e)
+            console.warn('[ClosureView] Supabase reflection sync failed (offline?):', e.message || e)
         }
     }
 

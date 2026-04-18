@@ -225,6 +225,37 @@ export function useSyncEngine() {
                 }
             ])
 
+            // Sync recent days (last 7 days) from Supabase to local Dexie for offline Closure page
+            const sevenDaysAgo = new Date()
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+            const syncStartDate = sevenDaysAgo.toISOString().split('T')[0]
+
+            const { data: recentDays, error: daysErr } = await supabase
+                .from('days')
+                .select('date, states_executed, structural_violations, recovery_count, deep_work_minutes, daily_reflection')
+                .eq('user_id', user.id)
+                .gte('date', syncStartDate)
+
+            if (daysErr) {
+                console.warn('[SyncEngine] Days sync failed:', daysErr.message)
+            } else if (recentDays?.length) {
+                for (const day of recentDays) {
+                    const localDay = await db.days.get(day.date)
+                    // Preserve locally-tracked task/violation counts (kept up-to-date by syncDailyProgress
+                    // in utils.js) and only fall back to Supabase values when no local record exists yet.
+                    await db.days.put({
+                        date: day.date,
+                        tasks_completed: localDay?.tasks_completed ?? (day.states_executed || 0),
+                        violations: localDay?.violations ?? (day.structural_violations || 0),
+                        deep_work_minutes: day.deep_work_minutes || localDay?.deep_work_minutes || 0,
+                        compliance_score: localDay?.compliance_score || 0,
+                        recovery_count: day.recovery_count || 0,
+                        daily_reflection: day.daily_reflection || localDay?.daily_reflection || null
+                    })
+                }
+                console.log(`[SyncEngine] Synced ${recentDays.length} recent days`)
+            }
+
             console.log(`[SyncEngine] SUCCESS: Synced ${states?.length || 0} states, ${checklists?.length || 0} checklists, ${rules?.length || 0} rules`)
 
         } catch (e) {
