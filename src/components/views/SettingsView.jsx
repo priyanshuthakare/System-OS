@@ -1,9 +1,9 @@
-import { useState } from 'react'
 import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { useSettingsLogic } from '../../hooks/useSettingsLogic'
 import { useTierGuard } from '../../hooks/useTierGuard'
-import ProUpgradeModal from '../ui/ProUpgradeModal'
 import { cn } from '../../lib/utils'
+import ProUpgradeModal from '../ui/ProUpgradeModal'
 
 const CATEGORIES = [
     { id: 'physical', label: 'PHYSICAL', color: 'text-green', border: 'border-green/30' },
@@ -25,12 +25,12 @@ export default function SettingsView() {
     return (
         <div className="flex-1 overflow-y-auto w-full bg-black flex flex-col p-6 pt-10 pb-20">
             <h1 className="font-condensed font-black text-[40px] leading-none text-white uppercase tracking-[-1px] mb-2">
-                State<br/>Builder
+                State<br />Builder
             </h1>
             <p className="font-mono text-[8px] text-text3 tracking-[2px] uppercase mb-8">
                 System 1 — Define your operating states
             </p>
-            
+
             <div className="space-y-6">
                 <div className="relative flex items-center justify-between border-b border-border pb-2">
                     <h2 className="font-mono text-[10px] tracking-[2px] uppercase text-text2">Operating States</h2>
@@ -47,9 +47,9 @@ export default function SettingsView() {
                     {timeBlocks.map(block => {
                         const blockTemplates = templates?.filter(t => t.block_id === block.id) || []
                         return (
-                            <BlockItem 
-                                key={block.id} 
-                                block={block} 
+                            <BlockItem
+                                key={block.id}
+                                block={block}
                                 templates={blockTemplates}
                                 onDelete={deleteBlock}
                                 onAddTemplate={(data) => {
@@ -81,15 +81,25 @@ function BlockItem({ block, templates, onDelete, onAddTemplate, onDeleteTemplate
     const target = templates.filter(t => t.category === 'target')
     const uncategorized = templates.filter(t => !t.category)
 
+    // Compute dynamic day color based on start_time
+    const [startH, startM] = block.start_time.split(':').map(Number)
+    const startVal = startH * 60 + startM
+    let dynamicColor = 'bg-surface2'
+    if (startVal >= 5 * 60 && startVal < 12 * 60) dynamicColor = 'bg-amber'
+    else if (startVal >= 12 * 60 && startVal < 17 * 60) dynamicColor = 'bg-green'
+    else if (startVal >= 17 * 60 && startVal < 22 * 60) dynamicColor = 'bg-red'
+
+    const colorToUse = block.ui_color && block.ui_color !== 'bg-surface2' ? block.ui_color : dynamicColor
+
     return (
         <div className="border border-border bg-surface p-4 flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <div 
-                    className="flex-1 cursor-pointer" 
+                <div
+                    className="flex-1 cursor-pointer"
                     onClick={() => setExpanded(!expanded)}
                 >
                     <div className="flex items-center gap-3 mb-1">
-                        <div className={cn("w-2 h-2 rounded-full", block.ui_color || 'bg-surface2')} />
+                        <div className={cn("w-2 h-2 rounded-full", colorToUse)} />
                         <h3 className="font-condensed font-bold text-xl text-white tracking-widest uppercase">{block.name}</h3>
                         {block.is_sleep && <span className="text-[8px] font-mono text-amber border border-amber px-1">SHUTDOWN</span>}
                         {expanded ? <ChevronDown size={14} className="text-text3" /> : <ChevronRight size={14} className="text-text3" />}
@@ -98,7 +108,7 @@ function BlockItem({ block, templates, onDelete, onAddTemplate, onDeleteTemplate
                         {block.start_time} — {block.end_time}
                     </div>
                 </div>
-                
+
                 {confirmDelete ? (
                     <div className="flex items-center gap-2">
                         <span className="font-mono text-[9px] text-red tracking-[1px]">CONFIRM DELETE?</span>
@@ -133,24 +143,24 @@ function BlockItem({ block, templates, onDelete, onAddTemplate, onDeleteTemplate
                     </div>
 
                     {/* Physical items */}
-                    <CategorySection 
-                        category={CATEGORIES[0]} 
-                        items={physical} 
-                        onDelete={onDeleteTemplate} 
+                    <CategorySection
+                        category={CATEGORIES[0]}
+                        items={physical}
+                        onDelete={onDeleteTemplate}
                     />
 
                     {/* Grounding items */}
-                    <CategorySection 
-                        category={CATEGORIES[1]} 
-                        items={grounding} 
-                        onDelete={onDeleteTemplate} 
+                    <CategorySection
+                        category={CATEGORIES[1]}
+                        items={grounding}
+                        onDelete={onDeleteTemplate}
                     />
 
                     {/* Target items */}
-                    <CategorySection 
-                        category={CATEGORIES[2]} 
-                        items={target} 
-                        onDelete={onDeleteTemplate} 
+                    <CategorySection
+                        category={CATEGORIES[2]}
+                        items={target}
+                        onDelete={onDeleteTemplate}
                     />
 
                     {/* Uncategorized (legacy) */}
@@ -161,7 +171,7 @@ function BlockItem({ block, templates, onDelete, onAddTemplate, onDeleteTemplate
                             onDelete={onDeleteTemplate}
                         />
                     )}
-                    
+
                     <AddTemplateButton blockId={block.id} onAdd={onAddTemplate} />
                 </div>
             )}
@@ -318,8 +328,8 @@ function AddTemplateButton({ blockId, onAdd }) {
 
     if (!open) {
         return (
-            <button 
-                onClick={() => setOpen(true)} 
+            <button
+                onClick={() => setOpen(true)}
                 className="flex items-center gap-2 mt-2 w-full justify-center p-3 border border-dashed border-border text-text3 hover:text-white hover:border-text3 transition-colors font-mono text-[10px] tracking-[1px] uppercase"
             >
                 <Plus size={12} /> ADD ITEM
@@ -330,7 +340,7 @@ function AddTemplateButton({ blockId, onAdd }) {
     return (
         <div className="border border-amber/30 bg-black p-4 flex flex-col gap-3 mt-2">
             <div className="font-mono text-[9px] tracking-[2px] text-amber uppercase">New Checklist Item</div>
-            
+
             {/* Label */}
             <input
                 type="text"

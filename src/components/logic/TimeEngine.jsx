@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useAppStore } from '../../store/useAppStore'
+import { useEffect, useState } from 'react'
 import { db } from '../../lib/db'
+import { useAppStore } from '../../store/useAppStore'
 
 /**
  * @intent Invisible component that computes global application logic state every minute.
@@ -56,7 +56,7 @@ export default function TimeEngine() {
         for (const block of timeBlocks) {
             const [startH, startM] = block.start_time.split(':').map(Number)
             const [endH, endM] = block.end_time.split(':').map(Number)
-            
+
             const startVal = startH * 60 + startM
             const endVal = endH * 60 + endM
 
@@ -70,8 +70,18 @@ export default function TimeEngine() {
                 currentBlock = block.name
                 currentBlockId = block.id
                 isSleepMode = !!block.is_sleep
-                uiColor = block.ui_color || 'bg-surface'
-                
+
+                // Determine dynamic color based on time of day if specific color lacks UI mapping
+                // Morning: Amber | Day: Green | Evening: Red | Night: Surface
+                let dynamicColor = 'bg-surface2'
+                if (startVal >= 5 * 60 && startVal < 12 * 60) dynamicColor = 'bg-amber'
+                else if (startVal >= 12 * 60 && startVal < 17 * 60) dynamicColor = 'bg-green'
+                else if (startVal >= 17 * 60 && startVal < 22 * 60) dynamicColor = 'bg-red'
+
+                uiColor = block.ui_color && block.ui_color !== 'bg-surface2'
+                    ? block.ui_color
+                    : dynamicColor
+
                 // Use dedicated is_reward flag, or fall back to checking unlock_reward field
                 if (block.is_reward || (block.unlock_reward && block.unlock_reward.trim() !== '')) {
                     isRewardWindowOpen = true

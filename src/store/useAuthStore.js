@@ -2,10 +2,8 @@ import { create } from 'zustand'
 import { Capacitor } from '@capacitor/core'
 import { supabase } from '../lib/supabase'
 
-/** Redirect URL used after Google OAuth — must match an allowed URL in your Supabase project */
-const OAUTH_REDIRECT_URL = Capacitor.isNativePlatform()
-    ? 'com.projectmahem.stabilityos://login-callback'
-    : window.location.origin
+/** Deep-link scheme for native Android OAuth callback */
+const NATIVE_REDIRECT = 'com.projectmahem.stabilityos://login-callback'
 
 /** Holds the deep-link listener handle so it can be cleaned up on re-init */
 let appUrlListenerHandle = null
@@ -63,6 +61,7 @@ export const useAuthStore = create((set, get) => ({
         if (Capacitor.isNativePlatform()) {
             try {
                 const { App } = await import('@capacitor/app')
+                const { Browser } = await import('@capacitor/browser')
                 // Remove any existing listener before adding a new one to prevent duplicates
                 if (appUrlListenerHandle) {
                     appUrlListenerHandle.remove()
@@ -70,9 +69,21 @@ export const useAuthStore = create((set, get) => ({
                 }
                 appUrlListenerHandle = await App.addListener('appUrlOpen', async ({ url }) => {
                     if (!url) return
-                    // Supabase appends the auth fragment/query to our redirect URL
                     if (url.startsWith('com.projectmahem.stabilityos://')) {
-                        const { error } = await supabase.auth.exchangeCodeForSession(url)
+                        // Dismiss the system browser before processing the code
+                        await Browser.close()
+                        
+                        // Parse the URL to extract the actual code
+                        const parsedUrl = new URL(url)
+                        const code = parsedUrl.searchParams.get('code')
+                        
+                        if (!code) {
+                            console.warn('[Auth] No code parameter found in deep link URL:', url)
+                            return
+                        }
+                        
+                        // exchangeCodeForSession expects ONLY the code string
+                        const { error } = await supabase.auth.exchangeCodeForSession(code)
                         if (error) {
                             console.error('[Auth] exchangeCodeForSession error:', error.message)
                             set({ oauthError: error.message })
@@ -145,19 +156,42 @@ export const useAuthStore = create((set, get) => ({
     },
 
     /**
-     * @intent Triggers Google OAuth flow. On web, opens a redirect.
-     * On Android (Capacitor), opens the system browser and redirects back via deep link.
+     * @intent Triggers Google OAuth flow.
+     * - Native (Android): skips WebView redirect, opens the system browser via @capacitor/browser.
+     *   The system browser handles the custom-scheme redirect back to the app.
+     * - Web: standard Supabase redirect flow.
      */
     signInWithGoogle: async () => {
+        if (Capacitor.isNativePlatform()) {
+            const { Browser } = await import('@capacitor/browser')
+            // skipBrowserRedirect: true returns the URL without navigating the WebView
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: NATIVE_REDIRECT,
+                    skipBrowserRedirect: true,
+                    queryParams: {
+                        access_type: 'offline',
+                        prompt: 'select_account',
+                    },
+                },
+            })
+            if (error) throw error
+            // Open in the system browser — it can process the custom-scheme deep link
+            if (data?.url) await Browser.open({ url: data.url, windowName: '_self' })
+            return data
+        }
+
+        // Web: let Supabase handle the redirect normally
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: OAUTH_REDIRECT_URL,
+                redirectTo: window.location.origin,
                 queryParams: {
                     access_type: 'offline',
                     prompt: 'select_account',
-                }
-            }
+                },
+            },
         })
         if (error) throw error
         return data
