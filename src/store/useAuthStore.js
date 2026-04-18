@@ -1,5 +1,14 @@
 import { create } from 'zustand'
+import { Capacitor } from '@capacitor/core'
 import { supabase } from '../lib/supabase'
+
+/** Redirect URL used after Google OAuth — must match an allowed URL in your Supabase project */
+const OAUTH_REDIRECT_URL = Capacitor.isNativePlatform()
+    ? 'com.projectmahem.stabilityos://login-callback'
+    : window.location.origin
+
+/** Holds the deep-link listener handle so it can be cleaned up on re-init */
+let appUrlListenerHandle = null
 
 /**
  * @intent Global auth state store managing Supabase sessions
@@ -18,6 +27,7 @@ export const useAuthStore = create((set, get) => ({
     isOnboarded: false,
     needsEmailConfirmation: false,
     pendingEmail: null,
+    oauthError: null,
 
     /** Initialize auth listener — call once in App.jsx */
     init: async () => {
@@ -38,6 +48,31 @@ export const useAuthStore = create((set, get) => ({
                 set({ user: null, profile: null, isOnboarded: false, needsEmailConfirmation: false, pendingEmail: null })
             }
         })
+
+        // 3. On native Capacitor, handle the OAuth deep-link callback
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const { App } = await import('@capacitor/app')
+                // Remove any existing listener before adding a new one to prevent duplicates
+                if (appUrlListenerHandle) {
+                    appUrlListenerHandle.remove()
+                    appUrlListenerHandle = null
+                }
+                appUrlListenerHandle = await App.addListener('appUrlOpen', async ({ url }) => {
+                    if (!url) return
+                    // Supabase appends the auth fragment/query to our redirect URL
+                    if (url.startsWith('com.projectmahem.stabilityos://')) {
+                        const { error } = await supabase.auth.exchangeCodeForSession(url)
+                        if (error) {
+                            console.error('[Auth] exchangeCodeForSession error:', error.message)
+                            set({ oauthError: error.message })
+                        }
+                    }
+                })
+            } catch (e) {
+                console.warn('[Auth] App plugin not available:', e)
+            }
+        }
     },
 
     fetchProfile: async (user) => {
@@ -101,13 +136,13 @@ export const useAuthStore = create((set, get) => ({
 
     /**
      * @intent Triggers Google OAuth flow. On web, opens a redirect.
-     * On Android (Capacitor), this will handle via the system browser.
+     * On Android (Capacitor), opens the system browser and redirects back via deep link.
      */
     signInWithGoogle: async () => {
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin,
+                redirectTo: OAUTH_REDIRECT_URL,
                 queryParams: {
                     access_type: 'offline',
                     prompt: 'select_account',
@@ -125,6 +160,10 @@ export const useAuthStore = create((set, get) => ({
 
     clearConfirmationState: () => {
         set({ needsEmailConfirmation: false, pendingEmail: null })
+    },
+
+    clearOauthError: () => {
+        set({ oauthError: null })
     },
 
     setOnboarded: () => {

@@ -14,6 +14,8 @@ export default function AuthView() {
     const needsEmailConfirmation = useAuthStore(s => s.needsEmailConfirmation)
     const pendingEmail = useAuthStore(s => s.pendingEmail)
     const clearConfirmationState = useAuthStore(s => s.clearConfirmationState)
+    const oauthError = useAuthStore(s => s.oauthError)
+    const clearOauthError = useAuthStore(s => s.clearOauthError)
 
     const [mode, setMode] = useState('login')
     const [email, setEmail] = useState('')
@@ -44,6 +46,7 @@ export default function AuthView() {
 
     const handleGoogleSignIn = async () => {
         setError(null)
+        clearOauthError()
         setGoogleBusy(true)
         try {
             await signInWithGoogle()
@@ -133,7 +136,7 @@ export default function AuthView() {
                 {/* Tabs */}
                 <div className="flex border border-border">
                     <button
-                        onClick={() => { setMode('login'); setError(null) }}
+                        onClick={() => { setMode('login'); setError(null); clearOauthError() }}
                         className={cn(
                             "flex-1 py-3 font-mono text-[10px] tracking-[2px] uppercase transition-colors",
                             mode === 'login' ? 'bg-surface text-white' : 'text-text3 hover:text-white'
@@ -142,7 +145,7 @@ export default function AuthView() {
                         Login
                     </button>
                     <button
-                        onClick={() => { setMode('signup'); setError(null) }}
+                        onClick={() => { setMode('signup'); setError(null); clearOauthError() }}
                         className={cn(
                             "flex-1 py-3 font-mono text-[10px] tracking-[2px] uppercase transition-colors border-l border-border",
                             mode === 'signup' ? 'bg-surface text-white' : 'text-text3 hover:text-white'
@@ -202,9 +205,9 @@ export default function AuthView() {
                         className="w-full bg-surface border border-border p-3 font-body text-sm text-white placeholder-text3 outline-none focus:border-amber transition-colors"
                     />
 
-                    {error && (
+                    {(error || oauthError) && (
                         <div className="font-mono text-[10px] text-red border border-red p-2 bg-red/5 leading-relaxed">
-                            {error}
+                            {error || oauthError}
                         </div>
                     )}
 
