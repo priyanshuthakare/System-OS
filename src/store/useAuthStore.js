@@ -10,6 +10,9 @@ const OAUTH_REDIRECT_URL = Capacitor.isNativePlatform()
 /** Holds the deep-link listener handle so it can be cleaned up on re-init */
 let appUrlListenerHandle = null
 
+/** Holds the Supabase auth subscription so it can be cleaned up on re-init */
+let authSubscription = null
+
 /**
  * @intent Global auth state store managing Supabase sessions
  * @param {object} state
@@ -31,6 +34,12 @@ export const useAuthStore = create((set, get) => ({
 
     /** Initialize auth listener — call once in App.jsx */
     init: async () => {
+        // Clean up any existing auth subscription before re-registering
+        if (authSubscription) {
+            authSubscription.unsubscribe()
+            authSubscription = null
+        }
+
         // 1. Check existing session
         const { data: { session } } = await supabase.auth.getSession()
         if (session?.user) {
@@ -40,7 +49,7 @@ export const useAuthStore = create((set, get) => ({
         set({ loading: false })
 
         // 2. Listen for auth changes (login/logout/token refresh/OAuth callback)
-        supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session?.user) {
                 set({ user: session.user, needsEmailConfirmation: false, pendingEmail: null })
                 await get().fetchProfile(session.user)
@@ -48,6 +57,7 @@ export const useAuthStore = create((set, get) => ({
                 set({ user: null, profile: null, isOnboarded: false, needsEmailConfirmation: false, pendingEmail: null })
             }
         })
+        authSubscription = subscription
 
         // 3. On native Capacitor, handle the OAuth deep-link callback
         if (Capacitor.isNativePlatform()) {
