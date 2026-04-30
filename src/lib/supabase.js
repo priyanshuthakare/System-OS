@@ -1,8 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
 import { Capacitor } from '@capacitor/core'
 
-const SUPABASE_URL = 'https://ixpsvjihxflhmvvapwzj.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4cHN2amloeGZsaG12dmFwd3pqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTQ2MDMsImV4cCI6MjA4OTE3MDYwM30.RkpEfoC11Hb__tmaeQyh_Xypy5EuCXP0SSZqDaZ-psg'
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error(
+        '[supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. ' +
+        'Copy .env.example to .env.local and fill in your Supabase project credentials.'
+    )
+}
 
 /**
  * @intent Singleton Supabase client for auth and data sync.

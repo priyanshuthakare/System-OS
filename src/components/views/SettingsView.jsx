@@ -244,6 +244,7 @@ function AddBlockButton({ onAdd }) {
                 placeholder="State name (e.g. DEEP WORK)"
                 value={name}
                 onChange={e => setName(e.target.value)}
+                maxLength={40}
                 className="w-full bg-surface border border-border p-3 font-body text-sm text-white placeholder-text3 outline-none focus:border-green transition-colors"
             />
 
@@ -347,6 +348,7 @@ function AddTemplateButton({ blockId, onAdd }) {
                 placeholder="Action name (e.g. 10 pushups)"
                 value={label}
                 onChange={e => setLabel(e.target.value)}
+                maxLength={60}
                 className="w-full bg-surface border border-border p-3 font-body text-sm text-white placeholder-text3 outline-none focus:border-amber transition-colors"
             />
 
@@ -387,6 +389,7 @@ function AddTemplateButton({ blockId, onAdd }) {
                         onChange={e => setTimeMins(e.target.value)}
                         className="w-16 bg-surface border border-border px-2 py-1 font-mono text-[10px] text-white outline-none focus:border-amber"
                         min="1"
+                        max="480"
                     />
                 )}
                 {hasTimer && <span className="font-mono text-[8px] text-text3">min</span>}

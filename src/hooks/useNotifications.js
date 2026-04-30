@@ -60,7 +60,7 @@ export function useNotifications() {
                         body: 'Get ready. Your stabilizing sequence is about to begin.',
                         schedule: { at: startNotifyDate },
                         sound: 'default',
-                        smallIcon: 'ic_stat_icon_config_sample',
+                        smallIcon: 'ic_launcher_foreground',
                         actionTypeId: 'STATE_START'
                     })
                 }
@@ -76,7 +76,7 @@ export function useNotifications() {
                         body: 'Complete your remaining steps before the window closes.',
                         schedule: { at: endNotifyDate },
                         sound: 'default',
-                        smallIcon: 'ic_stat_icon_config_sample',
+                        smallIcon: 'ic_launcher_foreground',
                         actionTypeId: 'STATE_END'
                     })
                 }
@@ -121,7 +121,7 @@ export function useNotifications() {
                             body: randomQuote,
                             schedule: { at: notifyDate },
                             sound: 'default',
-                            smallIcon: 'ic_stat_icon_config_sample',
+                            smallIcon: 'ic_launcher_foreground',
                             actionTypeId: 'DAILY_QUOTE'
                         })
                     }

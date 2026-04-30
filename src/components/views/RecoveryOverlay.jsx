@@ -29,6 +29,7 @@ export default function RecoveryOverlay({ onClose }) {
                         placeholder="e.g. boredom, anxiety, phone near bed..."
                         value={trigger}
                         onChange={(e) => setTrigger(e.target.value)}
+                        maxLength={100}
                         className="w-full bg-surface border border-border p-3 font-body text-sm text-white placeholder-text3 outline-none focus:border-amber transition-colors"
                     />
 

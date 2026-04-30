@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { Capacitor } from '@capacitor/core'
 import { supabase } from '../lib/supabase'
+import { setRevenueCatUserId, clearRevenueCatUserId } from '../lib/revenuecat'
 
 /** Deep-link scheme for native Android OAuth callback */
 const NATIVE_REDIRECT = 'com.projectmahem.stabilityos://login-callback'
@@ -51,8 +52,12 @@ export const useAuthStore = create((set, get) => ({
             if (event === 'SIGNED_IN' && session?.user) {
                 set({ user: session.user, needsEmailConfirmation: false, pendingEmail: null })
                 await get().fetchProfile(session.user)
+                // Set RevenueCat user ID for subscription tracking
+                await setRevenueCatUserId(session.user.id)
             } else if (event === 'SIGNED_OUT') {
                 set({ user: null, profile: null, isOnboarded: false, needsEmailConfirmation: false, pendingEmail: null })
+                // Clear RevenueCat user ID on logout
+                await clearRevenueCatUserId()
             }
         })
         authSubscription = subscription

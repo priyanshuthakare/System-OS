@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useChecklist } from '../../hooks/useChecklist'
 import { useLockEngine } from '../../hooks/useLockEngine'
 import { useBrainRegionHeatmap } from '../../hooks/useBrainRegionHeatmap'
+import { useRegionStreak } from '../../hooks/useRegionStreak'
 import { useTierGuard } from '../../hooks/useTierGuard'
 import { db, getOrCreateDay } from '../../lib/db'
 import { cn } from '../../lib/utils'
@@ -11,6 +12,7 @@ import { useAppStore } from '../../store/useAppStore'
 import CheckboxItem from '../ui/CheckboxItem'
 import ChecklistCard from '../ui/ChecklistCard'
 import DeepWorkTracker from '../ui/DeepWorkTracker'
+import ErrorBoundary from '../ui/ErrorBoundary'
 import NeuralImpactMap from '../ui/NeuralImpactMap'
 import ProgressBar from '../ui/ProgressBar'
 import ProUpgradeModal from '../ui/ProUpgradeModal'
@@ -152,7 +154,15 @@ export default function HomeView() {
                 </div>
 
                 {/* Neural Impact Map */}
-                <NeuralImpactMap regionProgress={regionProgress} />
+                <ErrorBoundary fallback={
+                    <div className="mb-7 p-4 border border-border bg-surface text-center">
+                        <div className="font-mono text-[9px] text-text3 tracking-[1px]">
+                            Neural map unavailable
+                        </div>
+                    </div>
+                }>
+                    <NeuralImpactMap regionProgress={regionProgress} />
+                </ErrorBoundary>
 
                 {/* Active Block Header */}
                 <div className="flex items-center justify-between mb-3">

@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { Moon, Send, Brain, Clock } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { supabase } from '../../lib/supabase'
-import { useAuthStore } from '../../store/useAuthStore'
-import { useStatsData } from '../../hooks/useStatsData'
+import { Brain, Clock, Moon, Send } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAdaptiveAI } from '../../hooks/useAdaptiveAI'
 import { useClosureData } from '../../hooks/useClosureData'
+import { useStatsData } from '../../hooks/useStatsData'
 import { useTierGuard } from '../../hooks/useTierGuard'
 import { db } from '../../lib/db'
+import { supabase } from '../../lib/supabase'
 import { cn } from '../../lib/utils'
+import { useAuthStore } from '../../store/useAuthStore'
 
 /**
  * @intent Daily Closure / Night Review screen — execution %, violations, recovery, reflection, weekly pattern, phase progress, AI diagnostic
@@ -385,17 +385,37 @@ function WeeklyPatternSection() {
  * @intent Phase progress bar — shows current phase advancement and gate condition
  */
 function PhaseProgressSection() {
+    const user = useAuthStore(s => s.user)
     const profData = useLiveQuery(() => db.profiles.toCollection().first())
     const phaseData = useLiveQuery(() => profData ? db.phases.get(profData.phase_id) : undefined, [profData])
     const { avgCompliance } = useStatsData()
+    const allDays = useLiveQuery(() => db.days.toArray())
 
     if (!profData || !phaseData) return null
 
-    const startObj = new Date(profData.start_date)
-    const todayObj = new Date()
-    const diffDays = Math.ceil(Math.abs(todayObj - startObj) / (1000 * 60 * 60 * 24)) + 1
+    // Calculate streak: consecutive days with execution > 0
+    let streakDays = 0
+    if (allDays && allDays.length > 0) {
+        const sortedDays = [...allDays].sort((a, b) => new Date(b.date) - new Date(a.date))
+        const today = new Date().toISOString().split('T')[0]
+
+        for (let i = 0; i < sortedDays.length; i++) {
+            const dayDate = new Date(sortedDays[i].date)
+            const expectedDate = new Date(today)
+            expectedDate.setDate(expectedDate.getDate() - i)
+            const expectedDateStr = expectedDate.toISOString().split('T')[0]
+
+            if (sortedDays[i].date !== expectedDateStr) break
+            if ((sortedDays[i].tasks_completed || 0) > 0) {
+                streakDays++
+            } else {
+                break
+            }
+        }
+    }
+
     const requiredDays = phaseData.required_days || 30
-    const progressPct = Math.min((diffDays / requiredDays) * 100, 100)
+    const progressPct = Math.min((streakDays / requiredDays) * 100, 100)
 
     return (
         <div className="mb-8">
@@ -405,7 +425,7 @@ function PhaseProgressSection() {
                         {phaseData.name?.replace('-', '—') || 'Phase 1'}
                     </div>
                     <div className="font-mono text-[10px] text-amber">
-                        Day {diffDays} / {requiredDays}
+                        Day {streakDays} / {requiredDays}
                     </div>
                 </div>
                 <div className="h-1 bg-border relative mb-2">
@@ -429,10 +449,9 @@ function AIDiagnosticSection() {
     const { suggestion, loading, error, statusMsg, diagnose } = useAdaptiveAI()
     const { canAccessAI } = useTierGuard()
 
-    // Load persisted suggestion on mount
     const lastSuggestion = useLiveQuery(() => db.user_preferences.get('last_ai_suggestion'))
     const persistedSuggestion = lastSuggestion ? JSON.parse(lastSuggestion.value) : null
-    const displaySuggestion = suggestion || persistedSuggestion?.text
+    const displaySuggestion = suggestion !== null ? suggestion : persistedSuggestion?.text
 
     if (!canAccessAI()) return null
 
@@ -478,7 +497,7 @@ function AIDiagnosticSection() {
                     <div className="font-mono text-[9px] text-purple-400 tracking-[2px] uppercase mb-2">
                         STRUCTURAL RECOMMENDATION
                     </div>
-                    <div className="font-body text-[14px] text-white leading-relaxed">
+                    <div className="font-body text-[14px] text-white leading-relaxed whitespace-pre-wrap">
                         {displaySuggestion}
                     </div>
                     {persistedSuggestion?.timestamp && !suggestion && (

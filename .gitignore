@@ -1,7 +1,31 @@
-.env.local
-dist
-package-lock.json
-package.json
-blueprinttomarket.txt
+# Dependencies
 node_modules
 
+# Build output
+dist
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Planning / personal notes
+blueprinttomarket.txt
+app-logic.txt
+
+# Scripts
+install_cap.bat
+
+# Android build artifacts (keep source, ignore build output)
+android/app/build/
+android/capacitor-cordova-android-plugins/build/

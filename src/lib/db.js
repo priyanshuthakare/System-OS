@@ -29,6 +29,12 @@ db.version(2).stores({
     })
 });
 
+// v3 → adds brain_baseline (onboarding dysregulation capture) and region_streaks (healing progress)
+db.version(3).stores({
+    brain_baseline: '++id, capturedAt',
+    region_streaks: 'region, streak_days, last_updated',
+});
+
 /**
  * @intent Get or create a day record for local metrics tracking
  * @param {string} dateString - YYYY-MM-DD format

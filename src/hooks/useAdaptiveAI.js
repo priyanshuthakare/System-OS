@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { db } from '../lib/db'
 
@@ -12,6 +12,7 @@ export function useAdaptiveAI() {
     const [loading, setLoading]       = useState(false)
     const [error, setError]           = useState(null)
     const [statusMsg, setStatusMsg]   = useState(null)
+
 
     const diagnose = async () => {
         setLoading(true)

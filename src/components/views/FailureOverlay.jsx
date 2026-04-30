@@ -173,6 +173,7 @@ export default function FailureOverlay() {
                                                 onChange={(e) => setWriteLines(e.target.value)}
                                                 placeholder="What happened? Write it down..."
                                                 rows={3}
+                                                maxLength={500}
                                                 className="w-full bg-black border border-border p-3 font-body text-sm text-white placeholder-text3 outline-none focus:border-red transition-colors resize-none"
                                             />
                                         </div>
