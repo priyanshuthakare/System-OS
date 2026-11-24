@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LogIn, UserPlus, Loader, Mail, Chrome } from 'lucide-react'
+import { LogIn, UserPlus, Loader, Mail } from 'lucide-react'
 import { useAuthStore } from '../../store/useAuthStore'
 import { cn } from '../../lib/utils'
 
@@ -17,6 +17,8 @@ export default function AuthView() {
     const oauthError = useAuthStore(s => s.oauthError)
     const clearOauthError = useAuthStore(s => s.clearOauthError)
 
+    const resetPassword = useAuthStore(s => s.resetPassword)
+
     const [mode, setMode] = useState('login')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -24,6 +26,7 @@ export default function AuthView() {
     const [error, setError] = useState(null)
     const [busy, setBusy] = useState(false)
     const [googleBusy, setGoogleBusy] = useState(false)
+    const [resetSent, setResetSent] = useState(false)
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -44,6 +47,20 @@ export default function AuthView() {
         }
     }
 
+    const handleForgotPassword = async (e) => {
+        e.preventDefault()
+        setError(null)
+        setBusy(true)
+        try {
+            await resetPassword(email)
+            setResetSent(true)
+        } catch (err) {
+            setError(err.message)
+        } finally {
+            setBusy(false)
+        }
+    }
+
     const handleGoogleSignIn = async () => {
         setError(null)
         clearOauthError()
@@ -55,6 +72,84 @@ export default function AuthView() {
             setError(err.message)
             setGoogleBusy(false)
         }
+    }
+
+    // --- Forgot Password Screen ---
+    if (mode === 'forgot') {
+        if (resetSent) {
+            return (
+                <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
+                    <div className="w-full max-w-sm flex flex-col gap-6">
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="w-14 h-14 bg-surface border border-amber/30 flex items-center justify-center">
+                                <Mail size={24} className="text-amber" />
+                            </div>
+                            <h1 className="font-condensed font-black text-[28px] text-white uppercase tracking-[-1px] text-center">
+                                Check Your Email
+                            </h1>
+                        </div>
+                        <div className="bg-surface border border-amber/20 p-5 flex flex-col gap-3">
+                            <div className="font-mono text-[10px] tracking-[2px] text-amber uppercase">Reset Link Sent</div>
+                            <p className="font-body text-sm text-text2 leading-relaxed">
+                                A password reset link was sent to:
+                            </p>
+                            <div className="font-mono text-[11px] text-white bg-black border border-border px-3 py-2">{email}</div>
+                            <p className="font-body text-sm text-text2 leading-relaxed">
+                                Click the link to set a new password, then return here to sign in.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => { setMode('login'); setResetSent(false); setEmail(''); setError(null) }}
+                            className="w-full p-3 bg-amber text-black font-mono text-[11px] tracking-[2px] uppercase font-bold"
+                        >
+                            <LogIn size={13} className="inline mr-2" />
+                            Back to Sign In
+                        </button>
+                    </div>
+                </div>
+            )
+        }
+
+        return (
+            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
+                <div className="w-full max-w-sm flex flex-col gap-8">
+                    <div className="text-center">
+                        <h1 className="font-condensed font-black text-[36px] leading-none tracking-[-2px] text-white uppercase">
+                            Reset Password
+                        </h1>
+                        <p className="font-mono text-[9px] tracking-[3px] uppercase text-text3 mt-3">
+                            Enter your email to receive a reset link
+                        </p>
+                    </div>
+                    <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
+                        <input
+                            type="email"
+                            placeholder="Email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            className="w-full bg-surface border border-border p-3 font-body text-sm text-white placeholder-text3 outline-none focus:border-amber transition-colors"
+                        />
+                        {error && (
+                            <div className="font-mono text-[10px] text-red border border-red p-2 bg-red/5 leading-relaxed">{error}</div>
+                        )}
+                        <button
+                            type="submit"
+                            disabled={busy}
+                            className="w-full flex items-center justify-center gap-2 p-3 bg-amber text-black font-mono text-[11px] tracking-[2px] uppercase font-bold hover:bg-amber/90 disabled:opacity-50"
+                        >
+                            {busy ? <Loader size={14} className="animate-spin" /> : <><Mail size={14} /> Send Reset Link</>}
+                        </button>
+                    </form>
+                    <button
+                        onClick={() => { setMode('login'); setError(null) }}
+                        className="font-mono text-[9px] text-text3 tracking-[1px] hover:text-white transition-colors text-center"
+                    >
+                        ← Back to Sign In
+                    </button>
+                </div>
+            </div>
+        )
     }
 
     // --- Email Confirmation Screen ---
@@ -227,6 +322,15 @@ export default function AuthView() {
                             <><UserPlus size={14} /> Initialize</>
                         )}
                     </button>
+                    {mode === 'login' && (
+                        <button
+                            type="button"
+                            onClick={() => { setMode('forgot'); setError(null) }}
+                            className="font-mono text-[9px] text-text3 tracking-[1px] hover:text-white transition-colors text-center"
+                        >
+                            Forgot password?
+                        </button>
+                    )}
                 </form>
             </div>
         </div>

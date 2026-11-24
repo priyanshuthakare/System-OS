@@ -1,43 +1,19 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Lock } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useChecklist } from '../../hooks/useChecklist'
 import { useLockEngine } from '../../hooks/useLockEngine'
-import { useBrainRegionHeatmap } from '../../hooks/useBrainRegionHeatmap'
-import { useRegionStreak } from '../../hooks/useRegionStreak'
-import { useTierGuard } from '../../hooks/useTierGuard'
 import { db, getOrCreateDay } from '../../lib/db'
-import { cn } from '../../lib/utils'
 import { useAppStore } from '../../store/useAppStore'
 import CheckboxItem from '../ui/CheckboxItem'
-import ChecklistCard from '../ui/ChecklistCard'
 import DeepWorkTracker from '../ui/DeepWorkTracker'
-import ErrorBoundary from '../ui/ErrorBoundary'
-import NeuralImpactMap from '../ui/NeuralImpactMap'
-import ProgressBar from '../ui/ProgressBar'
-import ProUpgradeModal from '../ui/ProUpgradeModal'
+import ProgressionAnimations from '../ui/ProgressionAnimations'
 import UrgeButton from '../ui/UrgeButton'
 
-const CATEGORY_LABELS = {
-    physical: { label: 'PHYSICAL', color: 'text-green' },
-    grounding: { label: 'GROUNDING', color: 'text-blue-400' },
-    target: { label: 'TARGET', color: 'text-amber' }
-}
-
-/**
- * @intent Screen 1: Current State view with neurological sequence enforcement
- * @param None
- */
 export default function HomeView() {
     const setUrgeActive = useAppStore(state => state.setUrgeActive)
     const currentBlock = useAppStore(state => state.currentBlock)
     const currentBlockId = useAppStore(state => state.currentBlockId)
-    const currentStateName = useAppStore(state => state.currentStateName)
     const currentTimeStr = useAppStore(state => state.currentTimeStr)
-    const isRewardWindowOpen = useAppStore(state => state.isRewardWindowOpen)
-    const uiColor = useAppStore(state => state.uiColor)
-    const { canAccessUrgeEngine } = useTierGuard()
-    const [showUpgrade, setShowUpgrade] = useState(false)
 
     const setDeepWorkMinutes = useAppStore(state => state.setDeepWorkMinutes)
     const todayNum = new Date().toISOString().split('T')[0]
@@ -45,7 +21,7 @@ export default function HomeView() {
     // Restore deep work value from local Dexie
     useEffect(() => {
         getOrCreateDay(todayNum).then(day => {
-            if (day?.deep_work_minutes) setDeepWorkMinutes(day.deep_work_minutes)
+            setDeepWorkMinutes(day?.deep_work_minutes || 0)
         })
     }, [todayNum])
 
@@ -53,184 +29,61 @@ export default function HomeView() {
     const hasIncompleteItems = items.some(i => !i.isDone)
     useLockEngine(hasIncompleteItems)
 
-    const dayData = useLiveQuery(() => db.days.get(todayNum), [todayNum])
-    const dayMetrics = dayData || { tasks_completed: 0, violations: 0, compliance_score: 100 }
-
-    const regionProgress = useBrainRegionHeatmap(items, dayMetrics)
-
-    const profData = useLiveQuery(() => db.profiles.toCollection().first())
-    const phaseData = useLiveQuery(() => profData ? db.phases.get(profData.phase_id) : undefined, [profData])
-
-    // ── Day streak: consecutive calendar days with at least one completion
-    // Does NOT rely on a profile record — computed purely from checklist_completions.
-    // Rule: yesterday must have activity to extend streak; today is +1 (ongoing).
-    // If yesterday had 0 activity → streak resets to 1.
-    const dayNumber = useLiveQuery(async () => {
-        const all = await db.checklist_completions.toArray()
-        const datesWithActivity = new Set(all.map(c => c.date))
-
-        let streak = 1 // today always counts as at least day 1 (ongoing)
-        const cursor = new Date()
-        cursor.setDate(cursor.getDate() - 1) // start from yesterday
-
-        while (true) {
-            const ds = cursor.toISOString().split('T')[0]
-            if (datesWithActivity.has(ds)) {
-                streak++
-                cursor.setDate(cursor.getDate() - 1)
-            } else {
-                break // gap in streak — stop counting
-            }
-        }
-        return streak
-    }, []) ?? 1
-
-    const phaseName = phaseData ? phaseData.name.replace('-', '•') : 'Phase 1 • Stability'
-
-    const itemsDone = items.filter(i => i.isDone).length
-    const totalItems = items.length
-
-    // Group items by category for sectioned rendering
-    const grouped = items.reduce((acc, item) => {
-        const cat = item.category || 'target'
-        if (!acc[cat]) acc[cat] = []
-        acc[cat].push(item)
-        return acc
-    }, {})
-
+    const setTab = useAppStore(state => state.setTab)
+    const dates = Array.from({length: 7}, (_, index) => {
+        const date = new Date(todayNum + 'T12:00:00Z')
+        date.setUTCDate(date.getUTCDate() - 6 + index)
+        return date
+    })
+    const firstDay = dates[0].toISOString().slice(0, 10)
+    const history = useLiveQuery(() => db.checklist_completions.where('date')
+        .between(firstDay, todayNum, true, true).toArray(), [firstDay, todayNum])
+    const done = items.filter(item => item.isDone).length
+    const next = items.find(item => !item.isDone && !item.is_locked)
+    const [expanded, setExpanded] = useState(false)
+    const [error, setError] = useState('')
+    const renderItem = item => <CheckboxItem key={todayNum + item.id} {...item}
+        isLocked={item.is_locked} hasTimer={item.has_timer} timerMinutes={item.time_estimate_mins || 5}
+        meta={item.is_locked ? 'Earlier steps first' : item.has_timer ? (item.time_estimate_mins || 5) + ' min' : ''}
+        onClick={async () => {
+            setError('')
+            try { await toggleItem(item.id, item.isDone) }
+            catch { setError('Could not save your step. Please try again.') }
+        }} />
     return (
-        <div className="flex-1 overflow-y-auto w-full bg-black flex flex-col">
-            {/* State Bar */}
-            <div className={cn("px-6 py-2 flex items-center justify-between shrink-0", uiColor)}>
-                <div className="font-condensed font-bold text-[11px] tracking-[3px] uppercase text-white">
-                    ⬤ {currentStateName}
+        <div className="flex-1 overflow-y-auto bg-black p-5 space-y-5">
+            <header>
+                <p className="font-mono text-xs text-text2">Today &middot; {currentTimeStr}</p>
+                <h1 className="font-condensed text-4xl font-bold text-white">{currentBlockId ? currentBlock : 'Between routines'}</h1>
+            </header>
+            <section className="border border-amber bg-surface">
+                <div className="p-4 border-b border-border">
+                    <h2 className="font-condensed text-xl text-amber">{loading ? 'Loading routine...' : next ? 'Your next step' : items.length ? 'Routine complete' : 'No steps scheduled now'}</h2>
+                    {items.length > 0 && <div role="status" className="mt-2 text-text2 text-sm">{done} of {items.length} steps complete
+                        <progress className="block w-full h-2 mt-2 accent-amber" value={done} max={items.length} aria-label="Routine progress" />
+                    </div>}
                 </div>
-                <div className="font-mono text-[10px] text-white/70">
-                    {currentTimeStr}
-                </div>
-            </div>
-
-            <div className="p-6 pt-7 flex-1">
-                {/* Day Header */}
-                <div className="mb-7">
-                    <div className="font-mono text-[9px] tracking-[3px] uppercase text-text3 mb-1">
-                        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-                    </div>
-                    <div className="font-condensed font-black text-[52px] leading-[0.9] tracking-[-1px] text-white uppercase">
-                        DAY<br />{dayNumber}
-                    </div>
-                    <div className="font-mono text-[10px] text-text3 mt-2">
-                        {phaseName}
-                    </div>
-                </div>
-
-                {/* Score Strip */}
-                <div className="flex gap-2 mb-7">
-                    <div className="flex-1 bg-surface border border-border p-3">
-                        <div className="font-condensed font-black text-[32px] text-white leading-none">
-                            {itemsDone}
-                            <span className="text-[18px] text-text3">/{totalItems}</span>
-                        </div>
-                        <div className="font-mono text-[8px] tracking-[2px] uppercase text-text3 mt-1">
-                            Steps Done
-                        </div>
-                    </div>
-                    <div className="flex-1 bg-red-dim border border-red p-3">
-                        <div className="font-condensed font-black text-[32px] text-red leading-none">
-                            {dayMetrics.violations}
-                        </div>
-                        <div className="font-mono text-[8px] tracking-[2px] uppercase text-text3 mt-1">
-                            Violations
-                        </div>
-                    </div>
-                    <div className="flex-1 bg-surface border border-border p-3">
-                        <div className="font-condensed font-black text-[32px] text-white leading-none">
-                            {dayMetrics.compliance_score}<span className="text-[14px] text-text3">%</span>
-                        </div>
-                        <div className="font-mono text-[8px] tracking-[2px] uppercase text-text3 mt-1">
-                            Compliance
-                        </div>
-                    </div>
-                </div>
-
-                {/* Neural Impact Map */}
-                <ErrorBoundary fallback={
-                    <div className="mb-7 p-4 border border-border bg-surface text-center">
-                        <div className="font-mono text-[9px] text-text3 tracking-[1px]">
-                            Neural map unavailable
-                        </div>
-                    </div>
-                }>
-                    <NeuralImpactMap regionProgress={regionProgress} />
-                </ErrorBoundary>
-
-                {/* Active Block Header */}
-                <div className="flex items-center justify-between mb-3">
-                    <div className="font-mono text-[9px] tracking-[3px] uppercase text-text3">
-                        // active state
-                    </div>
-                    <div className="font-mono text-[8px] px-2 py-[3px] border border-amber text-amber tracking-[1px]">
-                        IN PROGRESS
-                    </div>
-                </div>
-
-                {/* Neurological Checklist */}
-                <ChecklistCard title={currentBlock.toUpperCase()} subtitle={`${itemsDone}/${totalItems} done`}>
-                    {loading ? (
-                        <div className="p-4 font-mono text-[10px] text-text3">Loading checklist...</div>
-                    ) : items.length === 0 ? (
-                        <div className="p-4 font-mono text-[10px] text-text3">No actionable items right now.</div>
-                    ) : (
-                        ['physical', 'grounding', 'target'].map(cat => {
-                            const catItems = grouped[cat]
-                            if (!catItems?.length) return null
-                            const catInfo = CATEGORY_LABELS[cat]
-                            return (
-                                <div key={cat}>
-                                    <div className={cn("px-4 pt-3 pb-1 font-mono text-[7px] tracking-[2px] uppercase", catInfo.color)}>
-                                        {catInfo.label}
-                                    </div>
-                                    {catItems.map((item) => (
-                                        <CheckboxItem
-                                            key={item.id}
-                                            label={item.label}
-                                            isDone={item.isDone}
-                                            isLocked={item.is_locked}
-                                            hasTimer={item.has_timer}
-                                            timerMinutes={item.time_estimate_mins || 5}
-                                            meta={item.is_locked ? <><Lock size={8} className="inline" /> LOCKED</> : (item.has_timer ? `${item.time_estimate_mins || 5}m →` : null)}
-                                            highlighted={item.has_timer}
-                                            onClick={() => !item.is_locked && toggleItem(item.id, item.isDone)}
-                                        />
-                                    ))}
-                                </div>
-                            )
-                        })
-                    )}
-                </ChecklistCard>
-
-                {/* Trackers */}
-                <DeepWorkTracker todayNum={todayNum} />
-
-                <ProgressBar
-                    label="Social Reward"
-                    value={isRewardWindowOpen ? "OPEN — AUTO-LOCKS AT 6:00" : "LOCKED UNTIL RESET ✓"}
-                    progress={isRewardWindowOpen ? 100 : 0}
-                    color={isRewardWindowOpen ? "amber" : "green"}
-                    dimValue={!isRewardWindowOpen}
-                    className="mb-4"
-                />
-
-                <UrgeButton onClick={() => {
-                    if (!canAccessUrgeEngine()) {
-                        setShowUpgrade(true)
-                        return
-                    }
-                    setUrgeActive(true)
-                }} />
-            </div>
-
-            {showUpgrade && <ProUpgradeModal onClose={() => setShowUpgrade(false)} />}
+                {next && renderItem(next)}
+                {items.length > 1 && <button className="p-3 text-text2 text-sm underline" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? 'Hide other steps' : 'View other steps'}</button>}
+                {expanded && items.filter(i => i.id !== next?.id).map(renderItem)}
+                {!loading && !next && <button className="p-4 text-amber underline" onClick={() => setTab('log')}>View schedule</button>}
+                {error && <p role="alert" className="p-3 text-red">{error}</p>}
+            </section>
+            <section className="border border-border p-4">
+                <h2 className="text-white font-condensed text-xl">Last seven days</h2>
+                <p className="text-text2 text-sm mb-3">{history ? history.length + (history.length === 1 ? ' step completed' : ' steps completed') : 'Loading activity...'}</p>
+                <ol className="grid grid-cols-7 gap-1">{dates.map(date => {
+                    const key = date.toISOString().slice(0, 10)
+                    const count = history?.filter(row => row.date === key).length
+                    return <li key={key} className="text-center">
+                        <span className="block text-xs text-text2">{date.toLocaleDateString(undefined, {weekday:'short', timeZone:'UTC'})}</span>
+                        <strong className={'block py-2 mt-1 ' + (count ? 'bg-green/20 text-green' : 'bg-surface text-text2')}>{count ?? '-'}</strong>
+                    </li>
+                })}</ol>
+            </section>
+            <DeepWorkTracker todayNum={todayNum} />
+            <UrgeButton onClick={() => setUrgeActive(true)} />
+            <ProgressionAnimations />
         </div>
     )
 }

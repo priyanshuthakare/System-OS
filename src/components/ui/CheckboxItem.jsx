@@ -34,57 +34,58 @@ export default function CheckboxItem({ isDone, label, meta, isLocked, hasTimer, 
     }
 
     return (
-        <div
+        <button type="button" disabled={isLocked || isDone || isActive}
+            aria-label={label + (isDone ? ", complete" : isLocked ? ", locked" : hasTimer ? ", start timer" : ", mark complete")}
             onClick={handleClick}
             className={cn(
-                "p-[13px] px-4 flex items-center gap-[14px] border-b border-border last:border-b-0",
+                "w-full text-left min-h-12 p-[13px] px-4 flex items-center gap-[14px] border-b border-border last:border-b-0",
                 isLocked ? "opacity-40" : (hasTimer && isActive ? "bg-amber/10" : "cursor-pointer"),
                 highlighted && !isDone && "bg-amber/5"
             )}
         >
             {/* Left Checkbox / Action Area */}
             {hasTimer && !isDone ? (
-                <div className={cn(
+                <span className={cn(
                     "font-mono text-[9px] px-2 py-1 shrink-0",
                     isLocked ? "text-text3 border border-border" : (isActive ? "text-white bg-amber border border-amber" : "text-amber border border-amber cursor-pointer")
                 )}>
                     {isActive ? formatTime() : "START"}
-                </div>
+                </span>
             ) : (
-                <div className={cn(
+                <span className={cn(
                     "w-[18px] h-[18px] border-[1.5px] border-border2 shrink-0 flex items-center justify-center transition-colors",
                     isDone ? "bg-green border-green" : "",
                     highlighted && !isDone && "border-amber"
                 )}>
                     {isDone && <Check size={14} color="white" strokeWidth={3} />}
-                </div>
+                </span>
             )}
 
             {/* Label */}
-            <div className={cn(
+            <span className={cn(
                 "flex-1 font-body text-[14px] font-normal",
                 isDone ? "text-text3 line-through decoration-text3" : "text-text",
                 highlighted && !isDone && "text-white"
             )}>
                 {label}
-            </div>
+            </span>
 
             {/* Right Meta Tag */}
             {meta && !isActive && (
-                <div className={cn(
+                <span className={cn(
                     "font-mono text-[9px] tracking-[1px]",
                     isLocked ? "text-text3 border border-border px-2 py-1" :
                         highlighted && !isDone ? "text-amber font-bold" : "text-text3"
                 )}>
                     {meta}
-                </div>
+                </span>
             )}
 
             {isActive && (
-                <div className="font-mono text-[9px] text-amber animate-pulse tracking-[1px] uppercase">
+                <span className="font-mono text-[9px] text-amber animate-pulse tracking-[1px] uppercase">
                     IN PROGRESS
-                </div>
+                </span>
             )}
-        </div>
+        </button>
     )
 }

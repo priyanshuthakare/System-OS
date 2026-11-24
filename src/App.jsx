@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PhoneFrame from './components/layout/PhoneFrame'
 import TimeEngine from './components/logic/TimeEngine'
 import AuthView from './components/views/AuthView'
@@ -14,6 +14,7 @@ import SettingsView from './components/views/SettingsView'
 import SleepView from './components/views/SleepView'
 import UrgeOverlay from './components/views/UrgeOverlay'
 import { useNotifications } from './hooks/useNotifications'
+import { useProgressionSync } from './hooks/useProgressionSync'
 import { useSyncEngine } from './hooks/useSyncEngine'
 import { db } from './lib/db'
 import { useAppStore } from './store/useAppStore'
@@ -39,17 +40,28 @@ export default function App() {
 
     const { syncAll } = useSyncEngine()
     const { scheduleStateNotifications } = useNotifications()
+    useProgressionSync()
 
     // synced = local data is ready to render (either from cache or fresh sync)
     const [synced, setSynced] = useState(false)
     const syncStarted = useRef(false)
+    const prevIsOnboarded = useRef(false)
 
     // Initialize auth listener on mount
     useEffect(() => { init() }, [init])
 
     // Offline-first sync logic
     useEffect(() => {
-        if (!user || !isOnboarded || syncStarted.current) return
+        if (!user || !isOnboarded) {
+            prevIsOnboarded.current = false
+            return
+        }
+        // Reset guard when isOnboarded just flipped true (post-onboarding)
+        if (!prevIsOnboarded.current) {
+            syncStarted.current = false
+        }
+        prevIsOnboarded.current = true
+        if (syncStarted.current) return
         syncStarted.current = true
 
         const runSync = async () => {
@@ -97,13 +109,14 @@ export default function App() {
         runSync()
     }, [user, isOnboarded])
 
-    // Reset sync flag on logout so next login re-syncs
+    // Reset sync flag on logout or when onboarding completes
     useEffect(() => {
         if (!user) {
             setSynced(false)
             syncStarted.current = false
         }
     }, [user])
+
 
     // --- RENDER GATES ---
 

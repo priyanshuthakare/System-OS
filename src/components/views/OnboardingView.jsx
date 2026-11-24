@@ -1,12 +1,12 @@
+import { HABITS, OTHER_HABIT } from '../../lib/habits'
 import { useState } from 'react'
-import { ChevronRight, Zap, Brain } from 'lucide-react'
+import { ChevronRight, Zap } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { db } from '../../lib/db'
 import { useAuthStore } from '../../store/useAuthStore'
 import { cn } from '../../lib/utils'
 
 const TIMES = ['Morning (6-9 AM)', 'Afternoon (12-4 PM)', 'Evening (5-8 PM)', 'Night (9 PM+)']
-const RISKS = ['Scrolling', 'Porn', 'Avoidance', 'Overeating', 'Anxiety']
+const RISKS = [...HABITS, OTHER_HABIT]
 const HELPS = ['Water', 'Walk', 'Breathing', 'Work', 'Pushups']
 
 const TIME_MAP = {
@@ -16,72 +16,15 @@ const TIME_MAP = {
     'Night (9 PM+)': { start: '21:00:00', end: '23:59:00' }
 }
 
-const SEVERITY_OPTIONS = ['Rarely', 'Sometimes', 'Often', 'Almost always']
-const SEVERITY_MAP = { 'Rarely': 0.25, 'Sometimes': 0.5, 'Often': 0.75, 'Almost always': 0.95 }
-const STREAK_OPTIONS = ['Less than a week', '1–2 weeks', '3–4 weeks', 'Over a month']
-const STREAK_MAP = { 'Less than a week': 0.9, '1–2 weeks': 0.7, '3–4 weeks': 0.5, 'Over a month': 0.3 }
-
-/**
- * @intent Brain diagnostic questions — 6 questions that map to brain region baselines.
- *         Each answer produces a dysregulation score (0–1) stored in brain_baseline.
- */
-const DIAGNOSTIC_SCREENS = [
-    {
-        question: 'How often do you act on urges you later regret?',
-        subtitle: 'Impulsive scrolling, bingeing, compulsive behavior',
-        region: 'amygdala',
-        options: SEVERITY_OPTIONS,
-        valueMap: SEVERITY_MAP,
-    },
-    {
-        question: 'How hard is it to start tasks when you know you should?',
-        subtitle: 'Procrastination, avoidance, negotiating with yourself',
-        region: 'prefrontal',
-        options: SEVERITY_OPTIONS,
-        valueMap: SEVERITY_MAP,
-    },
-    {
-        question: 'How physically inactive have you been lately?',
-        subtitle: 'Sedentary days, skipping movement, staying in bed',
-        region: 'motorCortex',
-        options: SEVERITY_OPTIONS,
-        valueMap: SEVERITY_MAP,
-    },
-    {
-        question: 'How often do you feel overwhelmed with no clear trigger?',
-        subtitle: 'Anxiety spikes, restlessness, body tension',
-        region: 'insula',
-        options: SEVERITY_OPTIONS,
-        valueMap: SEVERITY_MAP,
-    },
-    {
-        question: 'How often do you break your own rules or commitments?',
-        subtitle: 'Saying "just this once", ignoring your own boundaries',
-        region: 'anteriorCingulate',
-        options: SEVERITY_OPTIONS,
-        valueMap: SEVERITY_MAP,
-    },
-    {
-        question: 'How long since you had a streak of consistent days?',
-        subtitle: 'Days where you followed through on what you planned',
-        region: 'global',
-        options: STREAK_OPTIONS,
-        valueMap: STREAK_MAP,
-    },
-]
-
-/**
- * @intent Onboarding flow: 3 state-builder screens → 6 brain diagnostic screens → confirmation.
- *         Diagnostic answers are stored in brain_baseline (Dexie) and seed the healing model.
- */
 export default function OnboardingView() {
     const user = useAuthStore(s => s.user)
     const setOnboarded = useAuthStore(s => s.setOnboarded)
     const [step, setStep] = useState(0)
     const [selectedTime, setSelectedTime] = useState(null)
     const [selectedRisk, setSelectedRisk] = useState(null)
+    const [customHabit, setCustomHabit] = useState('')
+    const habit = selectedRisk === OTHER_HABIT ? customHabit.trim() : selectedRisk
     const [selectedHelps, setSelectedHelps] = useState([])
-    const [diagnosticAnswers, setDiagnosticAnswers] = useState({})
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState(null)
 
@@ -91,13 +34,9 @@ export default function OnboardingView() {
         )
     }
 
-    // Total steps: 3 state-builder + 6 diagnostic + 1 confirmation = 10
-    const TOTAL_DOTS = 10
-    const DIAGNOSTIC_START = 3
-    const CONFIRMATION_STEP = 9
-
+    const TOTAL_DOTS = 4
     const handleFinish = async () => {
-        if (!user || !selectedTime || !selectedRisk || selectedHelps.length === 0) return
+        if (!user || !selectedTime || !habit || selectedHelps.length === 0) return
         setBusy(true)
         setError(null)
 
@@ -113,7 +52,7 @@ export default function OnboardingView() {
                 end_time: timeWindow.end,
                 trigger_type: 'time',
                 trigger_value: timeWindow.start,
-                risk_behavior: selectedRisk.toLowerCase(),
+                risk_behavior: habit,
                 unlock_reward: '15 min free time',
                 lock_type: 'soft',
                 ui_color: 'bg-amber',
@@ -129,37 +68,13 @@ export default function OnboardingView() {
                     user_id: user.id,
                     label,
                     category: i === 0 ? 'physical' : i === 1 ? 'grounding' : 'target',
-                    has_timer: i === selectedHelps.length - 1,
-                    time_estimate_mins: i === selectedHelps.length - 1 ? 15 : 2,
+                    has_timer: label === 'Work',
+                    time_estimate_mins: label === 'Work' ? 15 : 2,
                     sort_order: i + 1
                 }))
                 const { error: checkErr } = await supabase.from('checklists').insert(items)
                 if (checkErr) console.error('Checklist insert warning:', checkErr.message)
             }
-
-            // ── Store brain baseline from diagnostic answers ──────────────────
-            // The global multiplier scales all per-region baselines
-            const globalMultiplier = diagnosticAnswers.global ?? 0.7
-            const baseline = {
-                motorCortex:       (diagnosticAnswers.motorCortex ?? 0.5) * globalMultiplier,
-                prefrontal:        (diagnosticAnswers.prefrontal ?? 0.5) * globalMultiplier,
-                insula:            (diagnosticAnswers.insula ?? 0.5) * globalMultiplier,
-                amygdala:          (diagnosticAnswers.amygdala ?? 0.5) * globalMultiplier,
-                anteriorCingulate: (diagnosticAnswers.anteriorCingulate ?? 0.5) * globalMultiplier,
-                dorsolateralPFC:   (diagnosticAnswers.prefrontal ?? 0.5) * globalMultiplier,
-                capturedAt: new Date().toISOString(),
-            }
-            await db.brain_baseline.clear()
-            await db.brain_baseline.add(baseline)
-
-            // Seed initial region streaks (all start at 0)
-            const regions = ['motorCortex', 'prefrontal', 'insula', 'amygdala', 'anteriorCingulate', 'dorsolateralPFC']
-            await db.region_streaks.clear()
-            await db.region_streaks.bulkAdd(regions.map(r => ({
-                region: r,
-                streak_days: 0,
-                last_updated: new Date().toISOString().split('T')[0],
-            })))
 
             setOnboarded()
         } catch (e) {
@@ -173,15 +88,15 @@ export default function OnboardingView() {
     // ── State-builder screens (steps 0–2) ─────────────────────────────────────
     const stateScreens = [
         {
-            question: 'When do you usually lose control?',
-            subtitle: 'Pick the window where drift hits hardest',
+            question: 'When would a reset help?',
+            subtitle: 'Choose a time for your first routine',
             options: TIMES,
             selected: selectedTime,
             onSelect: setSelectedTime
         },
         {
-            question: 'What usually happens?',
-            subtitle: 'The default behavior that hijacks you',
+            question: 'Which habit would you like to change?',
+            subtitle: 'Choose what you want help interrupting',
             options: RISKS,
             selected: selectedRisk,
             onSelect: setSelectedRisk
@@ -197,11 +112,12 @@ export default function OnboardingView() {
     ]
 
     // ── Render: State-builder screens (steps 0–2) ─────────────────────────────
-    if (step < DIAGNOSTIC_START) {
+    if (step < stateScreens.length) {
         const s = stateScreens[step]
         return (
             <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
                 <div className="w-full max-w-sm flex flex-col gap-8">
+                    {step > 0 && <button disabled={busy} className="text-text2 self-start" onClick={() => setStep(step - 1)}>Back</button>}
                     <ProgressDots total={TOTAL_DOTS} current={step} />
                     <div className="text-center">
                         <h2 className="font-condensed font-black text-[28px] leading-tight tracking-[-0.5px] text-white uppercase">
@@ -215,6 +131,8 @@ export default function OnboardingView() {
                             return (
                                 <button
                                     key={opt}
+                                    aria-pressed={isActive}
+                                    disabled={s.multi && !isActive && s.selected.length >= 3}
                                     onClick={() => s.onSelect(opt)}
                                     className={cn(
                                         "w-full p-4 border text-left font-body text-sm transition-all",
@@ -228,9 +146,10 @@ export default function OnboardingView() {
                             )
                         })}
                     </div>
+                    {step === 1 && selectedRisk === OTHER_HABIT && <input aria-label="Your habit" placeholder="Name your habit" className="w-full bg-surface p-3 text-white" maxLength={80} value={customHabit} onChange={e => setCustomHabit(e.target.value)} />}
                     <button
                         onClick={() => setStep(step + 1)}
-                        disabled={s.multi ? s.selected.length === 0 : !s.selected}
+                        disabled={step === 1 ? !habit : s.multi ? s.selected.length === 0 : !s.selected}
                         className="w-full flex items-center justify-center gap-2 p-3 bg-surface border border-border font-mono text-[10px] tracking-[2px] uppercase text-white hover:bg-surface2 transition-colors disabled:opacity-30"
                     >
                         Next <ChevronRight size={14} />
@@ -240,77 +159,11 @@ export default function OnboardingView() {
         )
     }
 
-    // ── Render: Diagnostic screens (steps 3–8) ────────────────────────────────
-    if (step >= DIAGNOSTIC_START && step < CONFIRMATION_STEP) {
-        const diagIdx = step - DIAGNOSTIC_START
-        const diag = DIAGNOSTIC_SCREENS[diagIdx]
-        const currentAnswer = diagnosticAnswers[diag.region] ?? null
-        const currentLabel = currentAnswer !== null
-            ? diag.options.find(o => diag.valueMap[o] === currentAnswer) || null
-            : null
-
-        return (
-            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
-                <div className="w-full max-w-sm flex flex-col gap-8">
-                    <ProgressDots total={TOTAL_DOTS} current={step} />
-
-                    {/* Brain icon for diagnostic section */}
-                    {diagIdx === 0 && (
-                        <div className="text-center">
-                            <Brain size={28} className="text-amber mx-auto mb-2" />
-                            <div className="font-mono text-[8px] tracking-[3px] uppercase text-text3">
-                                Brain State Capture
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="text-center">
-                        <h2 className="font-condensed font-black text-[24px] leading-tight tracking-[-0.5px] text-white uppercase">
-                            {diag.question}
-                        </h2>
-                        <p className="font-mono text-[9px] tracking-[2px] uppercase text-text3 mt-2">{diag.subtitle}</p>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        {diag.options.map(opt => {
-                            const isActive = currentLabel === opt
-                            return (
-                                <button
-                                    key={opt}
-                                    onClick={() => setDiagnosticAnswers(prev => ({
-                                        ...prev,
-                                        [diag.region]: diag.valueMap[opt]
-                                    }))}
-                                    className={cn(
-                                        "w-full p-4 border text-left font-body text-sm transition-all",
-                                        isActive
-                                            ? 'border-amber bg-amber/10 text-amber'
-                                            : 'border-border bg-surface text-text2 hover:border-text3'
-                                    )}
-                                >
-                                    {opt}
-                                </button>
-                            )
-                        })}
-                    </div>
-
-                    <button
-                        onClick={() => setStep(step + 1)}
-                        disabled={currentAnswer === null}
-                        className="w-full flex items-center justify-center gap-2 p-3 bg-surface border border-border font-mono text-[10px] tracking-[2px] uppercase text-white hover:bg-surface2 transition-colors disabled:opacity-30"
-                    >
-                        Next <ChevronRight size={14} />
-                    </button>
-                </div>
-            </div>
-        )
-    }
-
-    // ── Render: Confirmation screen (step 9) ──────────────────────────────────
     return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-sm flex flex-col gap-8 text-center">
-                <ProgressDots total={TOTAL_DOTS} current={step} />
+                {step > 0 && <button disabled={busy} className="text-text2 self-start" onClick={() => setStep(step - 1)}>Back</button>}
+                    <ProgressDots total={TOTAL_DOTS} current={step} />
 
                 <Zap size={40} className="text-amber mx-auto" />
 
@@ -322,7 +175,7 @@ export default function OnboardingView() {
                         {selectedTime?.split(' (')[0]} Reset — {selectedHelps.join(' → ')}
                     </p>
                     <p className="font-mono text-[8px] tracking-[1px] text-text3 mt-2">
-                        Brain baseline captured — watch it heal over time
+                        You can edit your routine in Settings.
                     </p>
                 </div>
 
@@ -337,7 +190,7 @@ export default function OnboardingView() {
                     disabled={busy}
                     className="w-full flex items-center justify-center gap-2 p-4 bg-amber text-black font-mono text-[11px] tracking-[2px] uppercase font-bold hover:bg-amber/90 transition-colors disabled:opacity-50"
                 >
-                    {busy ? 'INITIALIZING...' : 'ACTIVATE SYSTEM'}
+                    {busy ? 'INITIALIZING...' : 'Create routine'}
                 </button>
             </div>
         </div>

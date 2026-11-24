@@ -28,7 +28,7 @@ export default function LogView() {
                     // full schedule
                 </div>
                 <div className="font-condensed font-black text-[36px] leading-[0.9] tracking-[-1px] text-white uppercase">
-                    DAILY<br />LOG
+                    Daily schedule
                 </div>
                 <div className="font-mono text-[9px] text-text3 mt-2 tracking-[1px]">
                     {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · All Blocks · View Only

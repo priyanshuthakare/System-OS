@@ -211,6 +211,15 @@ export const useAuthStore = create((set, get) => ({
         set({ needsEmailConfirmation: false, pendingEmail: null })
     },
 
+    resetPassword: async (email) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: Capacitor.isNativePlatform()
+                ? NATIVE_REDIRECT
+                : `${window.location.origin}`,
+        })
+        if (error) throw error
+    },
+
     clearOauthError: () => {
         set({ oauthError: null })
     },

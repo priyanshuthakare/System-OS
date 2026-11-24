@@ -5,7 +5,6 @@ import { cn } from '../../lib/utils'
 
 const FEATURES = [
     { icon: Shield, label: 'Unlimited States', desc: 'Build as many stabilizing sequences as you need' },
-    { icon: Zap, label: 'Urge Engine', desc: 'Real-time urge interruption with personalized steps' },
     { icon: BarChart2, label: '90-Day Analytics', desc: 'Full execution history and pattern recognition' },
     { icon: Brain, label: 'Adaptive AI', desc: 'AI diagnoses failing states and suggests structural changes' },
 ]

@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
 import { syncDailyProgress } from '../lib/utils'
+import { useTaskProgression } from './useTaskProgression'
 
 const CATEGORY_ORDER = { physical: 0, grounding: 1, target: 2 }
 
@@ -10,6 +11,8 @@ const CATEGORY_ORDER = { physical: 0, grounding: 1, target: 2 }
  * @param {number} blockId - ID of the time block / state
  */
 export function useChecklist(dateString, blockId) {
+    const { completeTask } = useTaskProgression()
+
     const items = useLiveQuery(
         async () => {
             if (!blockId || !dateString) return []
@@ -75,11 +78,65 @@ export function useChecklist(dateString, blockId) {
         const newState = !currentState
 
         if (newState) {
+            const completedAt = new Date().toISOString()
             await db.checklist_completions.put({
                 template_id: templateId,
                 date: dateString,
-                completed_at: new Date().toISOString()
+                completed_at: completedAt
             })
+
+            try {
+                const template = await db.checklist_templates.get(templateId)
+                console.log('[useChecklist] template:', template)
+                if (template) {
+                    let taskId = template.progression_task_id
+
+                    if (!taskId) {
+                        taskId = `checklist_task_${template.id}`
+                        const task = await db.tasks.get(taskId)
+                        console.log('[useChecklist] existing task:', task)
+
+                        if (!task) {
+                            const category = template.category || 'target'
+                            const categoryDefaults = {
+                                physical: { base_xp: 15, difficulty_multiplier: 1.0, stat_targets: { strength: 0.5, resilience: 0.3, discipline: 0.2 } },
+                                grounding: { base_xp: 10, difficulty_multiplier: 1.0, stat_targets: { focus: 0.4, resilience: 0.3, discipline: 0.3 } },
+                                target: { base_xp: 20, difficulty_multiplier: 1.2, stat_targets: { focus: 0.3, knowledge: 0.3, discipline: 0.2, strength: 0.2 } }
+                            }
+                            const defaults = categoryDefaults[category] || categoryDefaults.target
+
+                            const newTask = {
+                                id: taskId,
+                                title: template.label || `Task ${template.id}`,
+                                category,
+                                base_xp: defaults.base_xp,
+                                difficulty_multiplier: defaults.difficulty_multiplier,
+                                repeat_penalty_enabled: true,
+                                stat_targets: defaults.stat_targets,
+                                is_low_value: false,
+                                max_repetitions_per_day: 1,
+                                min_completion_interval_mins: null
+                            }
+                            console.log('[useChecklist] creating task:', newTask)
+                            await db.tasks.put(newTask)
+                        }
+
+                        await db.checklist_templates.update(templateId, { progression_task_id: taskId })
+                    }
+
+                    console.log('[useChecklist] calling completeTask with taskId:', taskId)
+                    if (taskId) {
+                        const result = await completeTask({
+                            taskId,
+                            completedAt
+                        })
+                        console.log('[useChecklist] completeTask result:', result)
+                    }
+                }
+            } catch (error) {
+                console.error('[useChecklist] error:', error)
+                // The checklist records the action even when its optional XP award fails.
+            }
         } else {
             await db.checklist_completions
                 .where({ template_id: templateId, date: dateString })

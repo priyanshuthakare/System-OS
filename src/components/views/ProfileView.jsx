@@ -1,14 +1,18 @@
-import { useState } from 'react'
+import FamilyFilter from '../ui/FamilyFilter'
+import WeeklyBoard from '../ui/WeeklyBoard'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Shield, Info, AlertTriangle, LogOut } from 'lucide-react'
+import { AlertTriangle, LogOut, Shield } from 'lucide-react'
+import { useState } from 'react'
 import { useActivityHeatmap } from '../../hooks/useActivityHeatmap'
 import { useTierGuard } from '../../hooks/useTierGuard'
-import HeatmapGrid from '../ui/HeatmapGrid'
-import ProUpgradeModal from '../ui/ProUpgradeModal'
-import { useAppStore } from '../../store/useAppStore'
-import { useAuthStore } from '../../store/useAuthStore'
 import { db } from '../../lib/db'
 import { cn } from '../../lib/utils'
+import { useAppStore } from '../../store/useAppStore'
+import { useAuthStore } from '../../store/useAuthStore'
+import BossChallengePanel from '../ui/BossChallengePanel'
+import HeatmapGrid from '../ui/HeatmapGrid'
+import ProgressionPanel from '../ui/ProgressionPanel'
+import ProUpgradeModal from '../ui/ProUpgradeModal'
 
 /**
  * @intent Profile & System Status — heatmap, phase info, containment protocol, system boundaries
@@ -21,7 +25,6 @@ export default function ProfileView() {
     const signOut = useAuthStore(s => s.signOut)
     const userEmail = useAuthStore(s => s.user?.email)
     const [showUpgrade, setShowUpgrade] = useState(false)
-    const [showDnsInfo, setShowDnsInfo] = useState(false)
     const [signingOut, setSigningOut] = useState(false)
 
     const handleSignOut = async () => {
@@ -51,22 +54,27 @@ export default function ProfileView() {
             {/* Execution History Heatmap — always 90 boxes */}
             <HeatmapGrid days={days} totalActive={totalActive} currentStreak={currentStreak} />
 
-            {/* Containment Protocol */}
+            <WeeklyBoard />
+            <ProgressionPanel />
+
+            <BossChallengePanel />
+
+            {/* Setback check-in */}
             <div className="mb-8">
                 <div className="font-condensed font-bold text-[13px] tracking-[3px] uppercase text-white mb-4 border-b border-border pb-2 flex items-center gap-2">
                     <AlertTriangle size={14} className="text-red" />
-                    Containment Protocol
+                    Setback check-in
                 </div>
                 <button
                     onClick={() => setFailureActive(true)}
                     className="w-full bg-surface border border-red/30 p-4 text-left hover:bg-red-dim transition-colors"
                 >
                     <div className="font-condensed font-bold text-[16px] text-red tracking-[2px] uppercase mb-1">
-                        LOG RELAPSE EVENT
+                        Reflect on a setback
                     </div>
                     <div className="font-mono text-[9px] text-text3 tracking-[0.5px] leading-[1.6]">
-                        Opens the failure containment protocol.<br />
-                        No streak reset. No shame. Just structural re-entry.
+                        
+                        Record what happened and choose one next step.
                     </div>
                 </button>
             </div>
@@ -78,31 +86,7 @@ export default function ProfileView() {
                     System Boundaries
                 </div>
 
-                {/* DNS Blocking — informational */}
-                <div className="bg-surface border border-border p-4 mb-3 flex items-center justify-between">
-                    <div>
-                        <div className="font-body text-sm text-text mb-1">Block Adult Content</div>
-                        <div className="font-mono text-[8px] text-text3 tracking-[0.5px]">
-                            Device-level DNS / Screen Time
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => setShowDnsInfo(!showDnsInfo)}
-                        className="px-3 py-1.5 border border-border font-mono text-[9px] text-text2 tracking-[1px] hover:text-white hover:border-text3 transition-colors flex items-center gap-1"
-                    >
-                        <Info size={10} /> SETUP
-                    </button>
-                </div>
-
-                {showDnsInfo && (
-                    <div className="bg-black border border-green/20 p-4 mb-3 font-mono text-[10px] text-text2 leading-[1.8] tracking-[0.5px]">
-                        <div className="text-green text-[9px] tracking-[2px] uppercase mb-2">DNS BLOCKING SETUP</div>
-                        <div className="mb-2">This is enforced at your device level, not inside the app.</div>
-                        <div className="text-text3 mb-1">• <strong className="text-white">iPhone:</strong> Settings → Screen Time → Content Restrictions → Web Content → Limit Adult</div>
-                        <div className="text-text3 mb-1">• <strong className="text-white">Android:</strong> Use NextDNS or Family Link for system-wide DNS filtering</div>
-                        <div className="text-text3">• <strong className="text-white">Desktop:</strong> Set NextDNS (nextdns.io) as your system DNS resolver</div>
-                    </div>
-                )}
+                <FamilyFilter />
 
                 {/* Location Triggers — coming soon */}
                 <div className="bg-surface border border-border p-4 flex items-center justify-between opacity-50">
