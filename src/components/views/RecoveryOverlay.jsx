@@ -26,7 +26,7 @@ export default function RecoveryOverlay({ onClose }) {
 
                     <input
                         type="text"
-                        placeholder="e.g. boredom, anxiety, phone near bed..."
+                        placeholder="e.g. boredom, anxiety, a familiar place..."
                         value={trigger}
                         onChange={(e) => setTrigger(e.target.value)}
                         maxLength={100}
@@ -51,10 +51,10 @@ export default function RecoveryOverlay({ onClose }) {
                 <div className="w-full max-w-sm flex flex-col gap-6">
                     <Heart size={36} className="text-red mx-auto" />
                     <h2 className="font-condensed font-black text-[28px] leading-tight text-white uppercase text-center">
-                        Recovery action<br/>now
+                        Choose a next step
                     </h2>
                     <p className="font-mono text-[9px] tracking-[2px] uppercase text-text3 text-center">
-                        Pick one. Do it immediately.
+                        Choose something that feels manageable.
                     </p>
 
                     <div className="flex flex-col gap-2">

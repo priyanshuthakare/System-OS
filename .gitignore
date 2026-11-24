@@ -1,5 +1,7 @@
 # Dependencies
 node_modules
+*.jks
+*.keystore
 
 # Build output
 dist
@@ -29,3 +31,4 @@ install_cap.bat
 # Android build artifacts (keep source, ignore build output)
 android/app/build/
 android/capacitor-cordova-android-plugins/build/
+.gstack/

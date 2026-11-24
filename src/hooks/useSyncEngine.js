@@ -17,6 +17,9 @@ export function useSyncEngine() {
         if (!user) return
 
         try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session || session.user.id !== user.id) throw new Error('No matching session for sync')
+
             // 1. Fetch remote states
             const { data: states, error: statesErr } = await supabase
                 .from('states')
@@ -26,7 +29,7 @@ export function useSyncEngine() {
 
             if (statesErr) {
                 console.error('Sync states failed:', statesErr.message)
-                return
+                throw statesErr
             }
 
             // 2. Fetch remote checklists
@@ -38,7 +41,7 @@ export function useSyncEngine() {
 
             if (checkErr) {
                 console.error('Sync checklists failed:', checkErr.message)
-                return
+                throw checkErr
             }
 
             // 3. Fetch remote rules
@@ -49,6 +52,7 @@ export function useSyncEngine() {
 
             if (rulesErr) {
                 console.error('Sync rules failed:', rulesErr.message)
+                throw rulesErr
             }
 
             // 4. Destructive overwrite of local Dexie tables (Without transaction wrapper to prevent Dexie zone lock-ups)
@@ -59,7 +63,6 @@ export function useSyncEngine() {
             await db.checklist_templates.clear()
             await db.rules.clear()
             await db.phases.clear()
-            await db.profiles.clear()
 
             console.log('[SyncEngine] Applying remote data...')
             // Map Supabase states → Dexie time_blocks
@@ -110,10 +113,8 @@ export function useSyncEngine() {
             } else {
                 // Seed 4 default structural rules for new users
                 const DEFAULT_RULES = [
-                    { title: 'No laptop on bed', violation_type: 'Structural Failure', description: 'Laptop must stay at desk' },
-                    { title: 'No screens lying down', violation_type: 'Structural Failure', description: 'All screen use must be seated upright' },
-                    { title: 'WiFi off by shutdown', violation_type: 'Structural Failure', description: 'WiFi router off at shutdown time' },
-                    { title: 'Reset before scroll', violation_type: 'Structural Failure', description: 'Complete 4PM reset before any social media' }
+                    { title: 'Pause at my usual trigger', violation_type: 'Missed intention', description: 'Take a moment before acting' },
+                    { title: 'Try my planned alternative', violation_type: 'Missed intention', description: 'Use one of my reset actions' }
                 ]
 
                 const insertedRules = []
@@ -170,7 +171,6 @@ export function useSyncEngine() {
             }
 
             // Seed user preferences from onboarding data (urge steps, recovery actions, diagnostics)
-            await db.user_preferences.clear()
 
             // Derive physical anchors from the user's first state's checklists (onboarding "helps")
             const physicalChecklists = checklists?.filter(c => c.category === 'physical') || []
@@ -178,7 +178,7 @@ export function useSyncEngine() {
             const defaultAnchors = ['Stand up now', 'Drink water', 'Walk 2 minutes']
             const anchors = physicalAnchors.length > 0 ? physicalAnchors : defaultAnchors
 
-            await db.user_preferences.bulkPut([
+            const defaultPreferences = [
                 {
                     key: 'urge_steps',
                     value: JSON.stringify([
@@ -223,7 +223,12 @@ export function useSyncEngine() {
                     key: 'failure_emotions',
                     value: JSON.stringify(['Boredom', 'Anxiety', 'Loneliness', 'Fatigue', 'Frustration'])
                 }
-            ])
+            ]
+            for (const preference of defaultPreferences) {
+                if (!await db.user_preferences.get(preference.key)) {
+                    await db.user_preferences.add(preference)
+                }
+            }
 
             // Sync recent days (last 7 days) from Supabase to local Dexie for offline Closure page
             const sevenDaysAgo = new Date()
@@ -260,6 +265,7 @@ export function useSyncEngine() {
 
         } catch (e) {
             console.error('[SyncEngine] Sync failed:', e)
+            throw e
         }
     }, [user])
 

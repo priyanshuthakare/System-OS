@@ -12,9 +12,9 @@ export default function BottomNav() {
 
     const tabs = [
         { id: 'today', label: 'Today', icon: LayoutGrid },
-        { id: 'log', label: 'Log', icon: FileText },
-        { id: 'closure', label: 'Closure', icon: Moon },
-        { id: 'settings', label: 'States', icon: Layers },
+        { id: 'log', label: 'Schedule', icon: FileText },
+        { id: 'closure', label: 'Review', icon: Moon },
+        { id: 'settings', label: 'Settings', icon: Layers },
         { id: 'profile', label: 'Profile', icon: User },
     ]
 
@@ -27,16 +27,17 @@ export default function BottomNav() {
                 return (
                     <button
                         key={tab.id}
+                        aria-current={isActive ? "page" : undefined}
                         onClick={() => setTab(tab.id)}
                         className={cn(
                             "flex flex-col items-center gap-1 cursor-pointer flex-1 transition-opacity",
-                            isActive ? "opacity-100 text-white" : "opacity-40 text-text2"
+                            isActive ? "opacity-100 text-white" : "opacity-80 text-text2"
                         )}
                     >
                         <div className="w-[22px] h-[22px] flex items-center justify-center">
                             <Icon strokeWidth={1.5} size={20} />
                         </div>
-                        <span className="font-mono text-[8px] tracking-[1.5px] uppercase">
+                        <span className="font-mono text-[10px] tracking-normal uppercase">
                             {tab.label}
                         </span>
                     </button>

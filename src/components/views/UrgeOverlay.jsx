@@ -1,3 +1,6 @@
+import { useHabitChoice } from '../../hooks/useHabitChoice'
+import { resetActions } from '../../lib/habits'
+import HabitPicker from '../ui/HabitPicker'
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Check } from 'lucide-react'
@@ -21,7 +24,8 @@ export default function UrgeOverlay() {
     const stepsPref = useLiveQuery(() => db.user_preferences.get('urge_steps'))
     const timerPref = useLiveQuery(() => db.user_preferences.get('urge_timer_minutes'))
 
-    const STEPS = stepsPref ? JSON.parse(stepsPref.value) : DEFAULT_STEPS
+    const choice = useHabitChoice()
+    const STEPS = choice.habit ? resetActions(choice.habit) : stepsPref ? JSON.parse(stepsPref.value) : DEFAULT_STEPS
     const timerMinutes = timerPref ? parseInt(timerPref.value, 10) : 10
 
     const [timeLeft, setTimeLeft] = useState(timerMinutes * 60)
@@ -65,7 +69,7 @@ export default function UrgeOverlay() {
             if (user) {
                 await supabase.from('recovery_logs').insert({
                     user_id: user.id,
-                    trigger_context: 'Urge Protocol Activated',
+                    trigger_context: 'Guided reset',
                     action_taken: 'Started urge timer',
                     time_to_recover_seconds: 0
                 })
@@ -90,23 +94,24 @@ export default function UrgeOverlay() {
                     DISMISS ✕
                 </button>
                 <div className="font-mono text-[9px] tracking-[3px] text-white/50 mb-2">
-                    PROTOCOL ACTIVE
+                    Guided reset
                 </div>
                 <div className="font-condensed font-black text-[48px] uppercase tracking-[-1px] text-white leading-[0.9]">
-                    URGE<br />WAVE
+                    Take a pause
                 </div>
                 <div className="font-mono text-[10px] text-white/60 mt-2.5 tracking-[1px]">
-                    8–15 minutes. This will pass. Execute the steps.
+                    Choose a small action you can take right now.
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
+                <HabitPicker choice={choice} disabled={isRunning} />
                 <div className="text-center py-8 mb-6 border border-border bg-surface">
                     <div className="font-mono font-bold text-[64px] text-red tracking-[-2px] leading-none">
                         {mins}:{secs}
                     </div>
                     <div className="font-mono text-[9px] tracking-[3px] uppercase text-text3 mt-2">
-                        Estimated wave duration
+                        Reset timer
                     </div>
                     {!isRunning && (
                         <button
@@ -114,7 +119,7 @@ export default function UrgeOverlay() {
                             disabled={logging}
                             className="inline-block bg-red text-white font-condensed font-bold text-[14px] tracking-[3px] uppercase px-7 py-2.5 mt-4 disabled:opacity-50"
                         >
-                            {logging ? 'INJECTING...' : 'START TIMER'}
+                            {logging ? 'Starting...' : 'START TIMER'}
                         </button>
                     )}
                 </div>
@@ -170,7 +175,7 @@ export default function UrgeOverlay() {
                         onClick={handleDismiss}
                         className="w-full p-4 bg-green text-black font-mono text-[11px] tracking-[2px] uppercase font-bold mb-4 hover:bg-green/90 transition-colors"
                     >
-                        ALL STEPS DONE — RETURN TO SYSTEM
+                        Finish reset
                     </button>
                 )}
 

@@ -19,7 +19,7 @@ export function useTierGuard() {
 
     const canAddState = () => isPro || (blockCount || 0) < MAX_FREE_STATES
     const canAddChecklist = (currentCountForBlock) => isPro || currentCountForBlock < MAX_FREE_CHECKLIST_ITEMS
-    const canAccessUrgeEngine = () => isPro
+    const canAccessUrgeEngine = () => true
     const canAccessFullAnalytics = () => isPro
     const canAccessAI = () => isPro
 

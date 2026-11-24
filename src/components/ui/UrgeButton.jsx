@@ -16,7 +16,7 @@ export default function UrgeButton({ onClick, className }) {
             )}
         >
             <Activity size={16} strokeWidth={2} />
-            LOG URGE OVERRIDE
+            Help me reset
         </button>
     )
 }
