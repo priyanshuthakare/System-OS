@@ -1,7 +1,7 @@
 # STABILITY OS v1
 
 <div align="center">
-
+ 
 **A behavioral regulation operating system that replaces chaos with stability**
 
 <p align="center">
